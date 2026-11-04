@@ -38,6 +38,8 @@ The control system for a robot that fastens plates and screws along rows of a ro
 | `docs/firmware_guide.md` | The ESP32 firmware, how to build it, and how to bring it up |
 | `docs/next_steps.md` | Status, decision log, open questions, known gaps, and the roadmap in phases |
 | `docs/setup_guide.md` | Tools installed on this PC, commands, where files go, troubleshooting, Pi setup outline |
+| `docs/design_concept.md` | The long-term design reference: requirements, architecture summary, navigation and sensing concept, and the design decision log. Updated whenever a decision changes |
+| `docs/navigation/` | Navigation work: `navigation-notes.md` (the user's notes), `navigation-brainstorm-2026-11-04.md` (the discussion, buy list and bench test plan) and `navigation-plan-2026-11-04.md` (conclusions, what is next, open questions) |
 
 ## Status
 
