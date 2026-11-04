@@ -103,7 +103,7 @@ Every subsystem follows the same contract (`subsystem.h`):
 - **A new command while busy** stops the old one safely and starts fresh.
 - **Never blocks.** A subsystem checks its sensors every 20 ms (`CHECK_PERIOD_MS`) and takes one step.
 
-The state names in each `.h` file match the node names in the flowchart diagrams, so you can read the code next to `diagrams/subsystems/`.
+The state names in each `.h` file match the node names in the flowchart diagrams, so you can read the code next to `docs/diagrams/subsystems/`.
 
 ### Locomotion (S1 and S2)
 

@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Control system for a roofing robot (MSE 4499 capstone). A Raspberry Pi 5 runs a Supervisor state machine, vision and an operator UI. An ESP32 runs four subsystems (Locomotion, Plate, Screw, Fastening) over USB serial. No git repo. Windows, PowerShell/Git Bash. `README.md` is the index to all docs, and `diagrams/next_steps.md` has status, the decision log and open questions.
+Control system for a roofing robot (MSE 4499 capstone). A Raspberry Pi 5 runs a Supervisor state machine, vision and an operator UI. An ESP32 runs four subsystems (Locomotion, Plate, Screw, Fastening) over USB serial. No git repo. Windows, PowerShell/Git Bash. `README.md` is the index to all docs, and `docs/next_steps.md` has status, the decision log and open questions.
 
 ## Commands
 
@@ -37,7 +37,7 @@ There is no linter configured. There are no firmware tests. A first PlatformIO b
 
 **Two simulator fidelities, on purpose.** `sim.py` `StubSubsystem` answers after 0.2 s and is what the fast Supervisor tests use. `detail.py` `ProcessSubsystem` walks each subsystem's S1 to S5 flowchart node by node with sensors and supplies, and is what the dashboard uses (`SimWorld(route, detailed=True)`). The detailed model takes seconds of simulated time per step, so tests using it need long `run_until` timeouts. Its camera checks are internal, not `QUERY`/`ANSWER`.
 
-**Three copies of each subsystem flowchart must stay in step**: `diagrams/subsystems/S*.mmd`, `FLOWS` plus the builders in `supervisor/roofbot/detail.py`, and the state machines in `firmware/esp32/src/{locomotion,plate,screw,fastening}.cpp` (their state names match the node names). `tests/test_detail.py` only checks that `FLOWS` is internally consistent.
+**Three copies of each subsystem flowchart must stay in step**: `docs/diagrams/subsystems/S*.mmd`, `FLOWS` plus the builders in `supervisor/roofbot/detail.py`, and the state machines in `firmware/esp32/src/{locomotion,plate,screw,fastening}.cpp` (their state names match the node names). `tests/test_detail.py` only checks that `FLOWS` is internally consistent.
 
 **Firmware.** Non-blocking state machines (`subsystem.h` base class: one reply per command, `makeSafe()` before any reply, abort sends no reply). All hardware goes through `hal.h`, with `hal_sim.cpp` (default, fake robot, optional `params.sim` fault in `CMD_START`) or `hal_esp32.cpp` (every function is a TODO that fails safe). Main loop has a Supervisor-heartbeat watchdog (2 s) that aborts everything. `hal::setStackLight` switches the stack light lamps. Fastening deliberately sends no reply until the drill's retract switch confirms.
 
@@ -52,4 +52,4 @@ There is no linter configured. There are no firmware tests. A first PlatformIO b
 
 ## Documentation
 
-The owner asked that all code be documented. When changing behavior, update the matching doc: messages in `diagrams/message_schema.md`, Python in `diagrams/supervisor_code_guide.md`, simulator and dashboard in `diagrams/simulator_guide.md`, firmware in `diagrams/firmware_guide.md`, and status or decisions in `diagrams/next_steps.md`. Keep test counts and status tables in `README.md` accurate. `diagrams/complete_system_guide.md` is the source of truth for intended robot behavior (error rules E1 to E10, subsystem flows), and `diagrams/message_schema.md` lists every deliberate departure from it.
+The owner asked that all code be documented. When changing behavior, update the matching doc: messages in `docs/message_schema.md`, Python in `docs/supervisor_code_guide.md`, simulator and dashboard in `docs/simulator_guide.md`, firmware in `docs/firmware_guide.md`, and status or decisions in `docs/next_steps.md`. Keep test counts and status tables in `README.md` accurate. `docs/complete_system_guide.md` is the source of truth for intended robot behavior (error rules E1 to E10, subsystem flows), and `docs/message_schema.md` lists every deliberate departure from it.

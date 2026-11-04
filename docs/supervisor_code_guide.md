@@ -146,7 +146,7 @@ Useful `SimWorld` methods: `start_run()`, `operator(MsgType.X)`, `run(seconds)`,
 
 `ProcessSubsystem` is a `StubSubsystem` that walks through its own flowchart while a command runs. `FLOWS` holds the flowcharts as data (it is also sent to the dashboard to draw). For each command it builds a list of `Phase`s (a node, a duration, a result for checks, and how the sensors change), plays them out in time, then sends the single reply. Section 4a of `simulator_guide.md` describes what it shows. The timings are placeholders.
 
-To change a flowchart: edit `FLOWS` and the matching builder (`_drive`, `_turn`, `_plate`, `_screw`, `_fasten`), and keep it in step with `diagrams/subsystems/` and with the firmware. `tests/test_detail.py` checks that every edge in `FLOWS` points at a real node.
+To change a flowchart: edit `FLOWS` and the matching builder (`_drive`, `_turn`, `_plate`, `_screw`, `_fasten`), and keep it in step with `docs/diagrams/subsystems/` and with the firmware. `tests/test_detail.py` checks that every edge in `FLOWS` points at a real node.
 
 ### `dashboard.py` and `ui/index.html`
 
@@ -203,7 +203,7 @@ From the `supervisor` folder:
 - **Match replies by `ref` and sender.** Never trust a reply because it merely arrived.
 - **The robot never moves on by itself after a failure.** Only `RESOLVED` or `SKIP_SPOT` from the operator does.
 - **Every failure path ends in a safe, logged state.** If a new failure path is added, it must call `_stop` and write a `FaultRecord`.
-- **Keep the three copies of the flowcharts in step**: `diagrams/subsystems/`, `detail.py`, and the firmware.
+- **Keep the three copies of the flowcharts in step**: `docs/diagrams/subsystems/`, `detail.py`, and the firmware.
 
 ## 8. Tests
 

@@ -1,6 +1,6 @@
 # Roofing Robot: Complete System and Error Handling Guide
 
-All diagrams are in this folder. The `.mmd` files are the editable sources, and the `.png` files are the renders shown below.
+All diagrams are in the `diagrams/` folder next to this file. The `.mmd` files are the editable sources, and the `.png` files are the renders shown below.
 
 ## Table of contents
 
@@ -86,7 +86,7 @@ A single **live camera** watches the fastening area and streams continuously. Th
 
 Because every check above depends on it, the Supervisor also watches that the feed is alive and usable. If the feed drops, the lens is blocked, or the image goes too dark (for example the light fails), the robot stops (see E9).
 
-![Block diagram](1_block_diagram.png)
+![Block diagram](diagrams/1_block_diagram.png)
 
 ## 3. The subsystems in detail
 
@@ -132,11 +132,11 @@ Locomotion moves the robot. It has two jobs: driving straight along a row, and t
 
 **Drive straight to the next spot.** It checks it is on the beam, then drives until the encoder and route map say it is at the right spot. If it drifts off the beam it tries to relocate. If a time limit runs out at either point, it stops and reports a fault.
 
-![Locomotion, driving straight](subsystems/S1_locomotion_straight.png)
+![Locomotion, driving straight](diagrams/subsystems/S1_locomotion_straight.png)
 
 **Turn to the next row (only at the end of a row).** Turn 90, drive forward until the front sensor is on the next beam, check the encoder position, then turn 90 again in the same direction. The directions alternate: right twice, then left twice, and so on.
 
-![Locomotion, turning](subsystems/S2_locomotion_turn.png)
+![Locomotion, turning](diagrams/subsystems/S2_locomotion_turn.png)
 
 - **Sensors:** beam sensors (on the beam?), front sensor (on the next beam?), encoders (distance and turn angle).
 - **Faults:** `OFF_BEAM`, `CANNOT_REACH_SPOT`, `TURN_FAILED`. These have no skip option.
@@ -146,7 +146,7 @@ Locomotion moves the robot. It has two jobs: driving straight along a row, and t
 
 Plate puts one plate into the fastening position.
 
-![Plate subsystem](subsystems/S3_plate.png)
+![Plate subsystem](diagrams/subsystems/S3_plate.png)
 
 1. Check that plates are available. If not, report `NEED_REFILL` straight away.
 2. Feed the plate toward the fastening position. The **live camera** must see it arrive. If it does not, push again until a time limit, then report `PLATE_NOT_ARRIVED` (a jam).
@@ -158,7 +158,7 @@ Plate puts one plate into the fastening position.
 
 Screw loads one screw so it sits with the plate.
 
-![Screw subsystem](subsystems/S4_screw.png)
+![Screw subsystem](diagrams/subsystems/S4_screw.png)
 
 1. Check that screws are available. If not, report `NEED_REFILL` straight away.
 2. Load the screw into the fastening position.
@@ -170,7 +170,7 @@ Screw loads one screw so it sits with the plate.
 
 Fastening drives the screw in and checks the result.
 
-![Fastening subsystem](subsystems/S5_fastening.png)
+![Fastening subsystem](diagrams/subsystems/S5_fastening.png)
 
 1. Drill the screw in. The torque sensor must reach the right torque within **10 seconds**, or the drill retracts and it reports `TORQUE_TIMEOUT`.
 2. When the torque is right, the **live camera takes a photo**. If it is not accepted, the drill retracts and it reports `PHOTO_REJECTED`.
@@ -290,7 +290,7 @@ A failed step is retried up to 2 times in place. If it still fails, or something
 
 ## 5. A normal run (no errors)
 
-![Happy path](3_sequence_happy_path.png)
+![Happy path](diagrams/3_sequence_happy_path.png)
 
 ### How to read the Supervisor state chart
 
@@ -300,7 +300,7 @@ The Supervisor is a **state machine**. At any moment it is in exactly one box (a
 
 Read it top to bottom. This is the mowing-lawn loop.
 
-![State chart, normal flow](2a_state_chart_normal_flow.png)
+![State chart, normal flow](diagrams/2a_state_chart_normal_flow.png)
 
 1. **IDLE.** The robot is powered and waiting. The operator presses START.
 2. **DRIVE_TO_SPOT.** The robot drives straight along the row to the next spot.
@@ -312,7 +312,7 @@ Read it top to bottom. This is the mowing-lawn loop.
 
 #### Full chart, with faults
 
-![Supervisor state chart](2_supervisor_state_chart.png)
+![Supervisor state chart](diagrams/2_supervisor_state_chart.png)
 
 The full chart is the same loop plus three extra behaviours. Look for these:
 
@@ -377,7 +377,7 @@ In E1 to E7 the operator can press **RESOLVED** (resume) or **SKIP SPOT** (last 
 **Robot does:** stops the feed and feeds the plate again (up to N). If it still fails, it stops and alerts.
 **Operator does:** watches the live feed, clears the jam, then presses RESOLVED. If it cannot be cleared, they press SKIP SPOT.
 
-![E1](errors/E1_plate_not_arrived.png)
+![E1](diagrams/errors/E1_plate_not_arrived.png)
 
 ### E2: Plate placement rejected
 
@@ -385,7 +385,7 @@ In E1 to E7 the operator can press **RESOLVED** (resume) or **SKIP SPOT** (last 
 **Robot does:** releases and clears the plate, pushes it again (up to N). If it still fails, it stops and alerts.
 **Operator does:** fixes the plate on the robot, then presses RESOLVED. If the plate cannot be placed, they press SKIP SPOT.
 
-![E2](errors/E2_plate_placement_rejected.png)
+![E2](diagrams/errors/E2_plate_placement_rejected.png)
 
 ### E3: Out of plates
 
@@ -393,7 +393,7 @@ In E1 to E7 the operator can press **RESOLVED** (resume) or **SKIP SPOT** (last 
 **Robot does:** stops immediately and alerts. It does not retry, because retrying cannot help.
 **Operator does:** refills the plates, then presses RESOLVED. The Plate step resumes.
 
-![E3](errors/E3_out_of_plates.png)
+![E3](diagrams/errors/E3_out_of_plates.png)
 
 ### E4: Screw missing or not in the right spot
 
@@ -401,7 +401,7 @@ In E1 to E7 the operator can press **RESOLVED** (resume) or **SKIP SPOT** (last 
 **Robot does:** reloads and realigns the screw (up to N). If it still fails, it stops and alerts.
 **Operator does:** watches the live feed, checks **both** the plate and the screw, clears whatever is wrong (for example a jam or a shifted plate), then presses RESOLVED. If it cannot be fixed, SKIP SPOT.
 
-![E4](errors/E4_screw_not_in_position.png)
+![E4](diagrams/errors/E4_screw_not_in_position.png)
 
 ### E5: Out of screws
 
@@ -409,7 +409,7 @@ In E1 to E7 the operator can press **RESOLVED** (resume) or **SKIP SPOT** (last 
 **Robot does:** stops immediately and alerts. No retry.
 **Operator does:** refills the screws, then presses RESOLVED. The Screw step resumes.
 
-![E5](errors/E5_out_of_screws.png)
+![E5](diagrams/errors/E5_out_of_screws.png)
 
 ### E6: Torque not reached
 
@@ -417,7 +417,7 @@ In E1 to E7 the operator can press **RESOLVED** (resume) or **SKIP SPOT** (last 
 **Robot does:** retracts the drill (safe state) and drives the screw again (up to N). If it still fails, it stops and alerts.
 **Operator does:** checks the screw and drill (for example a stripped screw), then presses RESOLVED. If it cannot be fixed, SKIP SPOT.
 
-![E6](errors/E6_torque_timeout.png)
+![E6](diagrams/errors/E6_torque_timeout.png)
 
 ### E7: Photo rejected
 
@@ -425,7 +425,7 @@ In E1 to E7 the operator can press **RESOLVED** (resume) or **SKIP SPOT** (last 
 **Robot does:** retakes the photo (up to N). If it still fails, it stops and alerts.
 **Operator does:** checks the screw on the live feed or by eye (and cleans the camera if needed), then presses RESOLVED. If the screw is fine but the photo cannot be accepted, they can SKIP SPOT so it is logged for review.
 
-![E7](errors/E7_photo_rejected.png)
+![E7](diagrams/errors/E7_photo_rejected.png)
 
 ### E8: Locomotion fault
 
@@ -433,7 +433,7 @@ In E1 to E7 the operator can press **RESOLVED** (resume) or **SKIP SPOT** (last 
 **Robot does:** stops the wheels, tries to relocate to the beam (up to N), then stops and alerts.
 **Operator does:** places the robot back on the beam, then presses RESOLVED. **There is no skip here.**
 
-![E8](errors/E8_locomotion_fault.png)
+![E8](diagrams/errors/E8_locomotion_fault.png)
 
 ### E9: Live camera feed lost
 
@@ -441,7 +441,7 @@ In E1 to E7 the operator can press **RESOLVED** (resume) or **SKIP SPOT** (last 
 **Robot does:** stops the current step safely and alerts. There is no retry and no skip, because plate, screw, and photo checks cannot be verified without the camera.
 **Operator does:** cleans the lens, fixes the cable, or replaces the light, confirms the feed is back, then presses RESOLVED. The robot resumes the same step.
 
-![E9](errors/E9_camera_feed_lost.png)
+![E9](diagrams/errors/E9_camera_feed_lost.png)
 
 ### E10: Emergency stop
 
@@ -449,7 +449,7 @@ In E1 to E7 the operator can press **RESOLVED** (resume) or **SKIP SPOT** (last 
 **Robot does:** the Supervisor sends `CMD_ABORT` to every subsystem and all actuators stop. The robot does **not** resume the step, because its position and progress are no longer trusted.
 **Operator does:** checks the robot, does a manual reset (back to IDLE), and presses START again.
 
-![E10](errors/E10_emergency_stop.png)
+![E10](diagrams/errors/E10_emergency_stop.png)
 
 ---
 

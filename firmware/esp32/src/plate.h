@@ -1,4 +1,4 @@
-// Plate: S3. Names match the nodes in diagrams/subsystems/S3_plate.mmd.
+// Plate: S3. Names match the nodes in docs/diagrams/subsystems/S3_plate.mmd.
 #pragma once
 
 #include "subsystem.h"

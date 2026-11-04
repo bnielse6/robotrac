@@ -1,5 +1,5 @@
 // Locomotion: S1 (drive straight to the next spot) and S2 (turn onto the next row).
-// The state names match the node names in diagrams/subsystems/S1_*.mmd and S2_*.mmd.
+// The state names match the node names in docs/diagrams/subsystems/S1_*.mmd and S2_*.mmd.
 #pragma once
 
 #include "subsystem.h"

@@ -1,4 +1,4 @@
-// Screw: S4. Names match the nodes in diagrams/subsystems/S4_screw.mmd.
+// Screw: S4. Names match the nodes in docs/diagrams/subsystems/S4_screw.mmd.
 #pragma once
 
 #include "subsystem.h"

@@ -21,7 +21,7 @@ Where the project stands, what was decided, what is still open, and what to do n
 
 | Area | State | Evidence |
 |---|---|---|
-| Design: flowcharts, state chart, error handling (E1 to E10) | Done | `complete_system_guide.md`, `diagrams/` |
+| Design: flowcharts, state chart, error handling (E1 to E10) | Done | `complete_system_guide.md`, `diagrams/` (in `docs/`) |
 | Hardware architecture | Decided | `hardware_architecture.md` |
 | Message schema | Drafted, used by both sides | `message_schema.md`, `roofbot/messages.py` |
 | Supervisor (Python) | Written and tested in simulation | 87 tests pass |

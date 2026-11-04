@@ -1,4 +1,4 @@
-// Fastening: S5. Names match the nodes in diagrams/subsystems/S5_fastening.mmd.
+// Fastening: S5. Names match the nodes in docs/diagrams/subsystems/S5_fastening.mmd.
 //
 // Safety rule: the drill must be retracted BEFORE the answer is sent. If the retract switch never
 // reports "retracted", this subsystem never replies. The Supervisor then times out and stops with

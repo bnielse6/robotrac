@@ -1,5 +1,5 @@
 // The message format on the USB serial link: one JSON object per line.
-// The contract is diagrams/message_schema.md. The Python side is supervisor/roofbot/messages.py.
+// The contract is docs/message_schema.md. The Python side is supervisor/roofbot/messages.py.
 #pragma once
 
 #include <Arduino.h>
