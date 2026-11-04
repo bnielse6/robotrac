@@ -1,0 +1,732 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Roofbot Simulator</title>
+<style>
+  :root {
+    --bg: #f4f5f7; --panel: #fff; --ink: #1c2330; --muted: #6b7585; --line: #dde1e8;
+    --blue: #2563eb; --blue-bg: #e6eefc; --green: #15803d; --green-bg: #e3f4e8;
+    --red: #b91c1c; --red-bg: #fde8e8; --amber: #b45309; --amber-bg: #fdf0d9;
+    --purple: #6d28d9; --purple-bg: #efe8fb; --grey-bg: #eceff3;
+    --metal: #9aa4b2; --plate: #c58a3a; --screw: #4b5563;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12161d; --panel: #1b212b; --ink: #e6e9ef; --muted: #8e99aa; --line: #2c3442;
+      --blue: #6ea0ff; --blue-bg: #1c2b4a; --green: #5fd388; --green-bg: #17301f;
+      --red: #ff7b7b; --red-bg: #3a1c1c; --amber: #f0b45a; --amber-bg: #3a2c14;
+      --purple: #b693f5; --purple-bg: #2a2144; --grey-bg: #262d39;
+      --metal: #6b7585; --plate: #d99c4d; --screw: #aeb7c4;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.4 system-ui, "Segoe UI", sans-serif; }
+  header { display: flex; gap: 16px; align-items: center; padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; flex-wrap: wrap; }
+  header h1 { font-size: 16px; margin: 0; }
+  .tabs button { border: 0; background: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; color: var(--muted); font: inherit; }
+  .tabs button.on { background: var(--blue-bg); color: var(--blue); font-weight: 600; }
+  .grow { flex: 1; }
+  .simtime { font-variant-numeric: tabular-nums; color: var(--muted); }
+  button, select, input { font: inherit; color: var(--ink); }
+  .btn { border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+  .btn:hover { border-color: var(--blue); }
+  .btn.primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .btn.small { padding: 2px 8px; font-size: 12px; }
+  select, input[type=number] { border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 4px 6px; }
+  input[type=number] { width: 56px; }
+
+  .layout { display: grid; grid-template-columns: minmax(420px, 640px) 1fr; gap: 12px; padding: 12px 16px 0; align-items: start; }
+  @media (max-width: 1000px) { .layout { grid-template-columns: 1fr; } }
+  .stack { display: grid; gap: 12px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+  .card h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 0 0 8px; font-weight: 600; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .sect { padding: 16px 16px 0; }
+  .sect h2 { font-size: 15px; margin: 0 0 2px; }
+  .sect p { margin: 0 0 10px; color: var(--muted); }
+
+  /* state flow */
+  .flow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .st { padding: 6px 10px; border-radius: 8px; border: 1.5px solid var(--line); background: var(--grey-bg); color: var(--muted); font-size: 12px; font-weight: 600; }
+  .st.active { background: var(--blue); border-color: var(--blue); color: #fff; box-shadow: 0 0 0 3px var(--blue-bg); }
+  .st.active.bad { background: var(--red); border-color: var(--red); box-shadow: 0 0 0 3px var(--red-bg); color: #fff; }
+  .st.active.ok { background: var(--green); border-color: var(--green); box-shadow: 0 0 0 3px var(--green-bg); color: #fff; }
+  .st.resume { border-style: dashed; border-color: var(--amber); color: var(--amber); }
+  .arrow { color: var(--muted); }
+  .statusline { margin-top: 8px; color: var(--muted); font-size: 13px; }
+
+  /* roof */
+  .roof { display: grid; gap: 6px; }
+  .roofrow { display: flex; align-items: center; gap: 8px; }
+  .roofrow .lab { width: 54px; color: var(--muted); font-size: 12px; flex: none; }
+  .roofrow .spots { display: flex; gap: 8px; flex: 1; }
+  .roofrow.rev .spots { flex-direction: row-reverse; }
+  .roofrow.rev { flex-direction: row-reverse; }
+  .roofrow.rev .lab { text-align: right; }
+  .spot { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 600; border: 2px solid var(--line); background: var(--grey-bg); color: var(--muted); }
+  .spot.done { background: var(--green-bg); border-color: var(--green); color: var(--green); }
+  .spot.skipped { background: var(--amber-bg); border-color: var(--amber); color: var(--amber); }
+  .spot.current { background: var(--blue); border-color: var(--blue); color: #fff; box-shadow: 0 0 0 4px var(--blue-bg); }
+  .spot.current.bad { background: var(--red); border-color: var(--red); box-shadow: 0 0 0 4px var(--red-bg); }
+
+  /* operator */
+  .opbtns { display: flex; gap: 8px; flex-wrap: wrap; }
+  .opbtns .btn { min-width: 92px; font-weight: 600; }
+  .btn.estop { background: var(--red); border-color: var(--red); color: #fff; }
+  .btn.dim { opacity: .45; }
+  .alertbox { margin-top: 10px; padding: 10px; border-radius: 8px; background: var(--grey-bg); color: var(--muted); }
+  .alertbox.live { background: var(--red-bg); color: var(--red); border: 1px solid var(--red); }
+
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 99px; font-size: 11px; font-weight: 700; background: var(--grey-bg); color: var(--muted); white-space: nowrap; }
+  .pill.work { background: var(--blue-bg); color: var(--blue); }
+  .pill.good { background: var(--green-bg); color: var(--green); }
+  .pill.bad { background: var(--red-bg); color: var(--red); }
+  .pill.warn { background: var(--amber-bg); color: var(--amber); }
+  .small { font-size: 12px; color: var(--muted); }
+
+  /* subsystem detail */
+  .detailgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 12px; padding: 0 16px 24px; align-items: start; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+  .panel.is-working { border-color: var(--blue); box-shadow: 0 0 0 2px var(--blue-bg); }
+  .panel.is-bad { border-color: var(--red); box-shadow: 0 0 0 2px var(--red-bg); }
+  .phead { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  .phead .name { font-weight: 800; letter-spacing: .04em; }
+  .pnote { padding: 8px 12px 0; font-weight: 600; min-height: 2.6em; }
+  .pbar { height: 5px; background: var(--grey-bg); margin: 4px 12px 8px; border-radius: 3px; overflow: hidden; }
+  .pbar > div { height: 100%; width: 0; background: var(--blue); transition: width .2s linear; }
+  .pbody { display: grid; grid-template-columns: 1.25fr 1fr; gap: 10px; padding: 0 12px 10px; }
+  @media (max-width: 560px) { .pbody { grid-template-columns: 1fr; } }
+  .sub-h { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 6px 0 4px; font-weight: 700; }
+
+  .node { display: flex; gap: 6px; padding: 4px 6px; border-radius: 6px; border: 1px solid transparent; margin-bottom: 2px; opacity: .55; }
+  .node.seen { opacity: 1; background: var(--grey-bg); }
+  .node.cur { opacity: 1; background: var(--blue-bg); border-color: var(--blue); animation: pulse 1s ease-in-out infinite; }
+  .node.stopped { opacity: 1; background: var(--amber-bg); border-color: var(--amber); }
+  .node.k-ok.seen { background: var(--green-bg); }
+  .node.k-bad.seen { background: var(--red-bg); border-color: var(--red); }
+  .stack { display: inline-flex; gap: 4px; padding: 3px 6px; border-radius: 6px; background: var(--ink); }
+  .stack i { width: 12px; height: 12px; border-radius: 50%; opacity: .2; }
+  .stack i.red { background: #e5484d; } .stack i.amber { background: #f5a524; } .stack i.green { background: #30a46c; }
+  .stack i.on { opacity: 1; }
+  .stack i.on.flash { animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: .2; } }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 3px var(--blue-bg); } }
+  .node .ico { width: 18px; flex: none; text-align: center; font-weight: 800; color: var(--muted); }
+  .node.k-ok .ico { color: var(--green); }
+  .node.k-bad .ico { color: var(--red); }
+  .node.cur .ico { color: var(--blue); }
+  .node .txt { font-size: 12.5px; }
+  .node .cnt { font-size: 11px; font-weight: 700; color: var(--muted); margin-left: 4px; }
+  .node .res { font-size: 10px; font-weight: 800; padding: 0 5px; border-radius: 4px; margin-left: 4px; }
+  .node .res.yes { background: var(--green-bg); color: var(--green); }
+  .node .res.no { background: var(--red-bg); color: var(--red); }
+  .edges { display: flex; gap: 10px; flex-wrap: wrap; font-size: 10.5px; color: var(--muted); }
+  .edges .taken { color: var(--ink); font-weight: 700; }
+
+  .sens { width: 100%; font-size: 12px; }
+  .sens td { padding: 2px 0; border: 0; vertical-align: middle; }
+  .sens td.k { color: var(--muted); padding-right: 8px; }
+  .sens .v { font-weight: 600; }
+  .sens .v.good { color: var(--green); }
+  .sens .v.bad { color: var(--red); }
+  .meter { position: relative; height: 8px; background: var(--grey-bg); border-radius: 4px; margin-top: 2px; overflow: hidden; }
+  .meter > div { height: 100%; background: var(--blue); transition: width .2s linear; }
+  .meter.hot > div { background: var(--red); }
+  .pathlog { font: 11px/1.5 ui-monospace, Consolas, monospace; color: var(--muted); max-height: 130px; overflow: auto; }
+  .pathlog b.yes { color: var(--green); } .pathlog b.no { color: var(--red); }
+  .inject { border-top: 1px solid var(--line); padding: 8px 12px 10px; display: grid; gap: 6px; background: var(--grey-bg); }
+  .inject .row select { flex: 1; min-width: 210px; }
+  .script { font: 11px ui-monospace, Consolas, monospace; color: var(--amber); word-break: break-all; }
+
+  /* fastening area */
+  .cellcard svg { width: 100%; height: auto; display: block; background: var(--grey-bg); border-radius: 8px; }
+  .cellcard .toggles { display: grid; gap: 4px; margin-top: 8px; }
+
+  /* log */
+  .logwrap { max-height: 520px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
+  table { border-collapse: collapse; width: 100%; font-size: 12px; }
+  th { position: sticky; top: 0; background: var(--panel); text-align: left; color: var(--muted); font-weight: 600; padding: 4px 8px; border-bottom: 1px solid var(--line); }
+  td { padding: 3px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  td.t { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td.who { white-space: nowrap; }
+  .ty { display: inline-block; padding: 0 6px; border-radius: 4px; font-weight: 700; font-size: 11px; }
+  .ty.CMD_START { background: var(--blue-bg); color: var(--blue); }
+  .ty.DONE { background: var(--green-bg); color: var(--green); }
+  .ty.FAULT, .ty.ALERT { background: var(--red-bg); color: var(--red); }
+  .ty.NEED_REFILL { background: var(--amber-bg); color: var(--amber); }
+  .ty.CMD_ABORT, .ty.ESTOP { background: var(--red); color: #fff; }
+  .ty.START, .ty.RESOLVED, .ty.SKIP_SPOT, .ty.RESET { background: var(--purple-bg); color: var(--purple); }
+  .ty.HEARTBEAT, .ty.READY { background: var(--grey-bg); color: var(--muted); }
+  details { margin-top: 8px; }
+  summary { cursor: pointer; color: var(--muted); }
+  pre { background: var(--grey-bg); padding: 8px; border-radius: 6px; overflow: auto; max-height: 360px; font-size: 12px; }
+
+  /* tests */
+  .testgroup { margin: 10px 0 4px; font-weight: 700; font-size: 13px; }
+  .t-ok, .t-bad { padding: 2px 0 2px 18px; position: relative; font-size: 13px; }
+  .t-ok::before { content: "✓"; color: var(--green); position: absolute; left: 0; font-weight: 700; }
+  .t-bad::before { content: "✗"; color: var(--red); position: absolute; left: 0; font-weight: 700; }
+  .t-bad { color: var(--red); font-weight: 600; }
+  .badge { display: inline-block; padding: 3px 12px; border-radius: 99px; font-weight: 700; }
+  .badge.good { background: var(--green-bg); color: var(--green); }
+  .badge.bad { background: var(--red-bg); color: var(--red); }
+  .hidden { display: none !important; }
+  #offline { background: var(--red); color: #fff; padding: 6px 16px; text-align: center; }
+</style>
+</head>
+<body>
+<div id="offline" class="hidden">Cannot reach the dashboard server. Is dashboard.py still running?</div>
+<header>
+  <h1>Roofbot Simulator</h1>
+  <div class="tabs">
+    <button id="tab-sim" class="on" onclick="showTab('sim')">Simulator</button>
+    <button id="tab-tests" onclick="showTab('tests')">Tests</button>
+  </div>
+  <div class="grow"></div>
+  <span class="simtime">sim time <b id="simtime">0.00</b> s</span>
+</header>
+
+<!-- ================= SIMULATOR ================= -->
+<div id="view-sim">
+  <div class="layout">
+    <div class="stack">
+      <div class="card">
+        <h2>Scenario and clock</h2>
+        <div class="row">
+          <select id="preset"></select>
+          <label class="small">rows <input type="number" id="rows" min="1" max="8" value="2"></label>
+          <label class="small">spots <input type="number" id="spots" min="1" max="10" value="3"></label>
+          <button class="btn primary" onclick="loadScenario()">Load scenario</button>
+        </div>
+        <div class="small" id="presetdesc" style="margin:6px 0"></div>
+        <div class="row">
+          <button class="btn" id="pausebtn" onclick="togglePause()">Pause</button>
+          <button class="btn" onclick="stepOnce()" title="Advance 0.1 s of simulated time">Step 0.1 s</button>
+          <label class="small">speed
+            <select id="speed" onchange="act({action:'speed', value:this.value})">
+              <option>0.25</option><option>0.5</option><option selected>1</option><option>2</option><option>5</option><option>10</option><option>20</option>
+            </select>x
+          </label>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Supervisor state</h2>
+        <div class="flow" id="flow"></div>
+        <div class="statusline" id="statusline"></div>
+      </div>
+
+      <div class="card">
+        <h2>Roof (route map)</h2>
+        <div class="roof" id="roof"></div>
+        <div class="small" style="margin-top:8px">
+          <span class="pill good">done</span> <span class="pill work">robot is here</span>
+          <span class="pill warn">skipped</span> <span class="pill bad">stopped here</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Operator screen and buttons</h2>
+        <div class="opbtns">
+          <button class="btn" id="b-START" onclick="op('START')">START</button>
+          <button class="btn" id="b-RESOLVED" onclick="op('RESOLVED')">RESOLVED</button>
+          <button class="btn" id="b-SKIP_SPOT" onclick="op('SKIP_SPOT')">SKIP SPOT</button>
+          <button class="btn" id="b-RESET" onclick="op('RESET')">RESET</button>
+          <button class="btn estop" onclick="op('ESTOP')">E-STOP</button>
+        </div>
+        <div class="alertbox" id="alertbox">No alerts</div>
+      </div>
+    </div>
+
+    <div class="stack">
+      <div class="card">
+        <h2>Messages between the Supervisor and the subsystems</h2>
+        <div class="row" style="margin-bottom:6px">
+          <label class="small"><input type="checkbox" id="showhb" onchange="lastTraceKey=''"> show heartbeats</label>
+          <label class="small"><input type="checkbox" id="follow" checked> follow newest</label>
+          <span class="small" id="tracecount"></span>
+        </div>
+        <div class="logwrap" id="logwrap">
+          <table><thead><tr><th>time</th><th>from → to</th><th>message</th><th>details</th></tr></thead><tbody id="log"></tbody></table>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Fault log</h2>
+        <table><thead><tr><th>time</th><th>spot</th><th>subsystem</th><th>code</th><th>operator action</th></tr></thead><tbody id="faults"></tbody></table>
+        <div class="small" id="nofaults">No faults yet.</div>
+        <details><summary>Supervisor notes (ignored messages, timeouts, retries)</summary><pre id="events"></pre></details>
+      </div>
+    </div>
+  </div>
+
+  <div class="sect">
+    <h2>Inside the subsystems</h2>
+    <p>Each subsystem follows its own flowchart (S1 to S5) while it works on a command. The step it is on is highlighted, the path it took is shaded, and the sensors move as it goes. The Supervisor only ever sees the single answer at the end.</p>
+  </div>
+  <div class="detailgrid" id="detailgrid"></div>
+</div>
+
+<!-- ================= TESTS ================= -->
+<div id="view-tests" class="layout hidden" style="grid-template-columns: minmax(300px, 900px)">
+  <div class="card">
+    <h2>Automated tests</h2>
+    <div class="row">
+      <button class="btn primary" id="runtests" onclick="runTests()">Run all tests</button>
+      <span id="testbadge"></span>
+      <span class="small" id="testran"></span>
+    </div>
+    <div id="testlist"></div>
+    <details><summary>Raw output</summary><pre id="testraw"></pre></details>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+async function api(path, body) {
+  const res = await fetch(path, body === undefined ? {} : {
+    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)});
+  return res.json();
+}
+async function act(obj) { const r = await api('/api/action', obj); if (r.error) alert(r.error); refresh(); }
+const op = type => act({action: 'operator', type});
+
+/* ---------------- static setup ---------------- */
+let FLOWS = {};
+const FLOW = [
+  ['IDLE', 'IDLE'], ['DRIVE_TO_SPOT', 'DRIVE'], ['PLATE', 'PLATE'], ['SCREW', 'SCREW'], ['FASTEN', 'FASTEN'],
+  ['TURN_TO_NEXT_ROW', 'TURN to next row'], ['RUN_COMPLETE', 'RUN COMPLETE'],
+  ['WAIT_OPERATOR', 'WAIT FOR OPERATOR'], ['ESTOP', 'E-STOP']];
+$('flow').innerHTML = FLOW.map(([k, label], i) =>
+  `<span class="st" id="st-${k}">${label}</span>` + ([0,1,2,3].includes(i) ? '<span class="arrow">→</span>' : '')).join('');
+
+const SUBS = {
+  LOCOMOTION: {key: 'locomotion', title: 'Locomotion', steps: ['DRIVE', 'TURN'],
+    outcomes: {DRIVE: ['FAULT:OFF_BEAM', 'FAULT:CANNOT_REACH_SPOT', 'SILENT'], TURN: ['FAULT:TURN_FAILED', 'SILENT']}},
+  PLATE: {key: 'plate', title: 'Plate', steps: ['PLATE'],
+    outcomes: {PLATE: ['FAULT:PLATE_NOT_ARRIVED', 'FAULT:PLACEMENT_REJECTED', 'REFILL:PLATES', 'SILENT']}, refill: true},
+  SCREW: {key: 'screw', title: 'Screw', steps: ['SCREW'],
+    outcomes: {SCREW: ['FAULT:SCREW_NOT_IN_POSITION', 'REFILL:SCREWS', 'SILENT']}, refill: true},
+  FASTENING: {key: 'fastening', title: 'Fastening', steps: ['FASTEN'],
+    outcomes: {FASTEN: ['FAULT:TORQUE_TIMEOUT', 'FAULT:PHOTO_REJECTED', 'SILENT']}},
+};
+const OUTCOME_LABEL = {'REFILL:PLATES': 'REFILL:PLATES (empty the hopper)', 'REFILL:SCREWS': 'REFILL:SCREWS (empty the magazine)',
+  'SILENT': 'SILENT (stop answering)'};
+
+function fillOutcomes(key) {
+  const d = Object.values(SUBS).find(x => x.key === key);
+  const stepEl = $('step-' + key);
+  const step = stepEl ? stepEl.value : d.steps[0];
+  $('out-' + key).innerHTML = d.outcomes[step].map(o => `<option value="${o}">${esc(OUTCOME_LABEL[o] || o)}</option>`).join('');
+}
+
+function cellSVG() {
+  return `
+  <svg viewBox="0 0 320 230" id="cell" role="img" aria-label="Fastening area">
+    <defs><clipPath id="encl"><rect x="10" y="10" width="300" height="210" rx="8"/></clipPath></defs>
+    <rect x="10" y="10" width="300" height="210" rx="8" fill="none" stroke="var(--metal)" stroke-width="2" stroke-dasharray="6 4"/>
+    <g clip-path="url(#encl)">
+      <polygon id="cone" points="160,48 70,175 250,175" fill="var(--green)" opacity=".13"/>
+      <rect x="10" y="178" width="300" height="42" fill="var(--grey-bg)"/>
+      <line x1="10" y1="178" x2="310" y2="178" stroke="var(--metal)" stroke-width="2"/>
+      <text x="16" y="212" font-size="9" fill="var(--muted)">roof surface</text>
+      <rect id="plate" x="-200" y="168" width="104" height="10" fill="var(--plate)" stroke="var(--ink)" stroke-width=".6" opacity="0"/>
+      <g id="screw" opacity="0">
+        <rect x="-3" y="-14" width="6" height="16" fill="var(--screw)"/><rect x="-7" y="-18" width="14" height="5" fill="var(--screw)"/>
+      </g>
+      <g id="drill">
+        <rect x="146" y="-30" width="28" height="60" rx="3" fill="var(--metal)" stroke="var(--ink)" stroke-width=".6"/>
+        <rect x="157" y="30" width="6" height="22" fill="var(--screw)"/>
+        <text id="drilltxt" x="182" y="22" font-size="9" fill="var(--ink)"></text>
+      </g>
+      <circle id="flash" cx="160" cy="48" r="0" fill="#fff" opacity=".9"/>
+      <text id="celltxt" x="160" y="125" text-anchor="middle" font-size="12" fill="var(--muted)"></text>
+    </g>
+    <circle id="light" cx="34" cy="32" r="8" fill="#f5c542"/><text x="48" y="35" font-size="9" fill="var(--muted)">light</text>
+    <rect x="148" y="14" width="24" height="16" rx="3" fill="var(--ink)"/><circle cx="160" cy="22" r="5" fill="var(--blue)"/>
+    <text x="178" y="26" font-size="9" fill="var(--muted)">camera</text>
+  </svg>`;
+}
+
+function buildPanels() {
+  const cell = `
+    <div class="card cellcard">
+      <h2>Fastening area (what the camera sees)</h2>
+      ${cellSVG()}
+      <div class="small" id="cellinfo" style="margin-top:6px"></div>
+      <div class="toggles">
+        <div class="row"><b class="small">CAMERA</b><span class="pill good" id="pill-camera">ok</span><span class="small" id="info-camera"></span></div>
+        <label class="small"><input type="checkbox" id="cam-bad" onchange="act({action:'camera', ok: !this.checked})"> bad image (blocked lens, dark)</label>
+        <label class="small"><input type="checkbox" id="cam-dead" onchange="act({action:'camera', silent: this.checked})"> feed dead (no frames)</label>
+        <div class="row"><b class="small">STACK LIGHT</b><span class="stack" id="stack"><i class="red"></i><i class="amber"></i><i class="green"></i></span><span class="small" id="info-stack"></span></div>
+      </div>
+    </div>`;
+  const panels = Object.entries(SUBS).map(([name, d]) => `
+    <div class="panel" id="panel-${d.key}">
+      <div class="phead"><span class="name">${name}</span><span class="pill" id="pill-${d.key}">idle</span>
+        <span class="grow"></span><span class="small" id="cnt-${d.key}"></span></div>
+      <div class="pnote" id="note-${d.key}">Waiting for a command</div>
+      <div class="pbar"><div id="bar-${d.key}"></div></div>
+      <div class="pbody">
+        <div><div class="sub-h" id="flowname-${d.key}">Flowchart</div><div id="ladder-${d.key}"></div></div>
+        <div>
+          <div class="sub-h">Sensors</div><div id="sens-${d.key}"></div>
+          <div class="sub-h">Path taken</div><div class="pathlog" id="path-${d.key}"></div>
+        </div>
+      </div>
+      <div class="inject">
+        <div class="small"><b>Break it:</b> queue an outcome for its next command(s). Empty queue means it answers DONE.</div>
+        <div class="row">
+          ${d.steps.length > 1 ? `<select id="step-${d.key}" style="flex:none" onchange="fillOutcomes('${d.key}')">${d.steps.map(s => `<option>${s}</option>`).join('')}</select>` : ''}
+          <select id="out-${d.key}"></select>
+          <label class="small">×<input type="number" id="n-${d.key}" min="1" max="9" value="1"></label>
+          <button class="btn small" onclick="inject('${d.key}')">Queue</button>
+          <button class="btn small" onclick="act({action:'clear_script', node:'${d.key}'})">Clear</button>
+          ${d.refill ? `<button class="btn small" onclick="act({action:'refill', node:'${d.key}', count:12})">Refill supply</button>` : ''}
+        </div>
+        <div class="script" id="script-${d.key}"></div>
+      </div>
+    </div>`).join('');
+  $('detailgrid').innerHTML = cell + panels;
+  Object.values(SUBS).forEach(d => fillOutcomes(d.key));
+}
+buildPanels();
+
+function inject(key) {
+  const d = Object.values(SUBS).find(x => x.key === key);
+  const step = $('step-' + key) ? $('step-' + key).value : d.steps[0];
+  const outcome = $('out-' + key).value;
+  const n = Math.max(1, parseInt($('n-' + key).value) || 1);
+  act({action: 'inject', node: key, step, outcomes: Array(n).fill(outcome)});
+}
+
+(async function init() {
+  const meta = await api('/api/meta');
+  FLOWS = Object.fromEntries(Object.entries(meta.flows));
+  $('preset').innerHTML = Object.entries(meta.presets).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join('');
+  $('presetdesc').textContent = 'Pick a scenario and press Load. Most scenarios press START for you. "Empty" lets you do it yourself.';
+})();
+
+function loadScenario() {
+  act({action: 'reset', preset: $('preset').value, rows: +$('rows').value, spots: +$('spots').value});
+  lastTraceKey = ''; roofKey = '';
+}
+let paused = false;
+function togglePause() { act({action: 'pause', value: !paused}); }
+async function stepOnce() {
+  await act({action: 'pause', value: true});
+  await act({action: 'step', seconds: 0.1});
+}
+
+/* ---------------- rendering: Supervisor level ---------------- */
+let lastTraceKey = '', roofKey = '', lastPreset = null;
+
+function render(s) {
+  paused = s.paused;
+  $('simtime').textContent = s.time.toFixed(2);
+  $('pausebtn').textContent = s.paused ? 'Resume' : 'Pause';
+  if (document.activeElement !== $('speed')) $('speed').value = String(s.speed);
+  if (s.preset !== lastPreset && $('preset').options.length) { lastPreset = s.preset; $('preset').value = s.preset; }
+
+  FLOW.forEach(([k]) => {
+    const el = $('st-' + k);
+    el.className = 'st';
+    if (s.state === k) {
+      el.classList.add('active');
+      if (k === 'WAIT_OPERATOR' || k === 'ESTOP') el.classList.add('bad');
+      if (k === 'RUN_COMPLETE') el.classList.add('ok');
+    } else if (s.state === 'WAIT_OPERATOR' && s.resume_state === k) {
+      el.classList.add('resume');
+    }
+  });
+  let line = s.row ? `Row ${s.row}, spot ${s.spot}. ` : '';
+  if (s.pending) line += `Waiting for ${s.pending.node} to finish ${s.pending.step} (timeout at ${s.pending.deadline}s). `;
+  if (s.retries) line += `Retry ${s.retries} of ${s.max_retries}. `;
+  if (s.state === 'WAIT_OPERATOR') line += `Will resume ${s.resume_state} after RESOLVED. `;
+  $('statusline').textContent = line || 'Waiting for the operator to press START.';
+
+  renderRoof(s);
+
+  const useful = {
+    START: s.state === 'IDLE',
+    RESOLVED: s.state === 'WAIT_OPERATOR',
+    SKIP_SPOT: s.state === 'WAIT_OPERATOR' && s.allow_skip,
+    RESET: s.state === 'ESTOP' || s.state === 'RUN_COMPLETE',
+  };
+  Object.entries(useful).forEach(([k, v]) => $('b-' + k).classList.toggle('dim', !v));
+
+  const box = $('alertbox');
+  const last = s.alerts[s.alerts.length - 1];
+  const live = s.state === 'WAIT_OPERATOR' && last;
+  box.className = 'alertbox' + (live ? ' live' : '');
+  if (s.state === 'ESTOP') {
+    box.className = 'alertbox live';
+    box.innerHTML = '<b>EMERGENCY STOP.</b> Everything is stopped. Press RESET, then START to run again.';
+  } else if (live) {
+    const p = last.params || {};
+    let fix = p.allow_skip ? 'Fix it and press RESOLVED, or SKIP SPOT as a last resort.' : 'Fix it and press RESOLVED. Skip is not allowed for this fault.';
+    if (last.code === 'NEED_REFILL') fix = `Press "Refill supply" on the ${esc(p.subsystem)} panel below, then press RESOLVED. ` + (p.allow_skip ? 'Or SKIP SPOT.' : '');
+    box.innerHTML = `<b>ROBOT STOPPED</b> at row ${last.row}, spot ${last.spot}<br>${esc(p.subsystem)}: <b>${esc(last.code)}</b>`
+      + (p.detail ? ` (${esc(p.detail)})` : '') + `<br>${fix}`;
+  } else if (s.state === 'RUN_COMPLETE') {
+    box.innerHTML = 'Run complete. Review the fault log, then press RESET.';
+  } else if (last) {
+    box.textContent = `Last alert: row ${last.row}, spot ${last.spot}: ${(last.params || {}).subsystem} ${last.code}`
+      + ((last.params || {}).detail ? ` (${last.params.detail})` : '');
+  } else {
+    box.textContent = 'No alerts';
+  }
+
+  renderDetail(s);
+  renderLog(s);
+
+  $('nofaults').classList.toggle('hidden', s.fault_log.length > 0);
+  $('faults').innerHTML = s.fault_log.map(f => `<tr><td class="t">${f.time.toFixed(2)}</td><td>r${f.row} s${f.spot}</td><td>${esc(f.subsystem)}</td><td>${esc(f.code)}${f.detail ? ' (' + esc(f.detail) + ')' : ''}</td><td>${esc(f.action || 'waiting')}</td></tr>`).join('');
+  $('events').textContent = s.events.join('\n') || '(nothing yet)';
+}
+
+function renderRoof(s) {
+  const key = JSON.stringify(s.route);
+  if (key !== roofKey) {
+    roofKey = key;
+    $('roof').innerHTML = s.route.map((n, r) => {
+      const spots = Array.from({length: n}, (_, i) => `<div class="spot" id="sp-${r + 1}-${i + 1}">${i + 1}</div>`).join('');
+      const rev = r % 2 === 1;
+      return `<div class="roofrow ${rev ? 'rev' : ''}"><div class="lab">Row ${r + 1} ${rev ? '←' : '→'}</div><div class="spots">${spots}</div></div>`;
+    }).join('');
+  }
+  const skipped = new Set(s.skipped.map(x => x.join('-')));
+  s.route.forEach((n, r) => {
+    for (let i = 1; i <= n; i++) {
+      const el = $(`sp-${r + 1}-${i}`);
+      if (!el) continue;
+      let cls = 'spot';
+      const before = s.row && (r + 1 < s.row || (r + 1 === s.row && i < s.spot));
+      const here = s.row === r + 1 && s.spot === i;
+      if (skipped.has(`${r + 1}-${i}`)) cls += ' skipped';
+      else if (s.state === 'RUN_COMPLETE' || before) cls += ' done';
+      else if (here && s.state !== 'IDLE') cls += ' current' + (s.state === 'WAIT_OPERATOR' || s.state === 'ESTOP' ? ' bad' : '');
+      el.className = cls;
+    }
+  });
+}
+
+/* ---------------- rendering: subsystem detail ---------------- */
+const ICON = {start: '▶', act: '▢', check: '◇', ok: '✓', bad: '✗'};
+const HIDDEN = new Set(['plate_x', 'drill_depth', 'target_mm', 'torque_target_nm', 'limit_s']);
+const METERS = {encoder_mm: 'target_mm', torque_nm: 'torque_target_nm', timer_s: 'limit_s'};
+const LABELS = {beam_sensors: 'beam sensors', front_sensor: 'front sensor', encoder_mm: 'encoder (mm)', heading_deg: 'heading (deg)',
+  plates_left: 'plates left', plate_position: 'plate', camera_sees_plate: 'camera sees plate', tripwire: 'tripwire',
+  screws_left: 'screws left', screw_position: 'screw', camera_sees_both: 'camera sees both',
+  drill: 'drill', torque_nm: 'torque (N·m)', timer_s: 'timer (s)', photo: 'photo', wheels: 'wheels'};
+
+function short(nodes, id) {
+  const n = nodes.find(x => x.id === id);
+  if (!n) return id;
+  return n.text.length > 32 ? n.text.slice(0, 31) + '…' : n.text;
+}
+
+function ladderHTML(flow, d) {
+  const nodes = FLOWS[flow];
+  if (!nodes) return '<div class="small">No command yet.</div>';
+  return nodes.map(n => {
+    const v = d.visits[n.id];
+    const cur = d.node === n.id && d.status === 'working';
+    const stopped = d.node === n.id && (d.status === 'aborted' || d.status === 'silent');
+    const cls = `node k-${n.kind}${v ? ' seen' : ''}${cur ? ' cur' : ''}${stopped ? ' stopped' : ''}`;
+    const cnt = v && v.count > 1 ? `<span class="cnt">×${v.count}</span>` : '';
+    const res = v && v.last ? `<span class="res ${v.last}">${v.last.toUpperCase()}</span>` : '';
+    const e = n.edges;
+    let edges = '';
+    if (e.yes || e.no) {
+      edges = `<div class="edges"><span class="${v && v.last === 'yes' ? 'taken' : ''}">YES → ${esc(short(nodes, e.yes))}</span>`
+            + `<span class="${v && v.last === 'no' ? 'taken' : ''}">NO → ${esc(short(nodes, e.no))}</span></div>`;
+    } else if (e.next) {
+      edges = `<div class="edges"><span>→ ${esc(short(nodes, e.next))}</span></div>`;
+    }
+    return `<div class="${cls}"><div class="ico">${ICON[n.kind]}</div><div><div class="txt">${esc(n.text)}${cnt}${res}</div>${edges}</div></div>`;
+  }).join('');
+}
+
+function fmtSensor(k, v) {
+  if (typeof v === 'boolean') return {t: v ? 'yes' : 'no', c: v ? 'good' : ''};
+  const text = String(v);
+  let c = '';
+  if (/OFF BEAM|nothing|reject|not aligned|jammed|missing/i.test(text)) c = 'bad';
+  else if (/^on beam|detected|accepted|loaded|ON NEXT|at position/i.test(text)) c = 'good';
+  return {t: typeof v === 'number' ? (Number.isInteger(v) ? v : v.toFixed(2)) : text, c};
+}
+
+function sensorsHTML(sensors) {
+  return '<table class="sens">' + Object.entries(sensors).filter(([k]) => !HIDDEN.has(k)).map(([k, v]) => {
+    const f = fmtSensor(k, v);
+    let meter = '';
+    if (METERS[k]) {
+      const max = sensors[METERS[k]] || 1;
+      const pct = Math.max(0, Math.min(100, (v / max) * 100));
+      const hot = k === 'timer_s' && pct > 80;
+      meter = `<div class="meter ${hot ? 'hot' : ''}"><div style="width:${pct}%"></div></div>`;
+    }
+    return `<tr><td class="k">${esc(LABELS[k] || k)}</td><td><span class="v ${f.c}">${esc(f.t)}</span>${meter}</td></tr>`;
+  }).join('') + '</table>';
+}
+
+function pathHTML(path, nodesName) {
+  const nodes = FLOWS[nodesName] || [];
+  return path.slice().reverse().map(p => {
+    const n = nodes.find(x => x.id === p.node);
+    const r = p.result ? ` <b class="${p.result}">${p.result.toUpperCase()}</b>` : '';
+    return `${p.t.toFixed(1)}s ${esc(n ? n.text.slice(0, 28) : p.node)}${r}`;
+  }).join('<br>') || '(nothing yet)';
+}
+
+function renderDetail(s) {
+  Object.entries(SUBS).forEach(([name, d]) => {
+    const st = s.stubs[d.key];
+    const det = st.detail;
+    if (!det) return;
+    const panel = $('panel-' + d.key);
+    const pill = $('pill-' + d.key);
+    let pillText = 'idle' + (det.last_result ? ' (last: ' + det.last_result + ')' : ''), pillCls = 'pill', bad = false;
+    if (det.status === 'working') { pillText = 'working: ' + det.flow; pillCls = 'pill work'; }
+    else if (det.status === 'silent') { pillText = 'NOT RESPONDING'; pillCls = 'pill bad'; bad = true; }
+    else if (det.status === 'aborted') { pillText = 'ABORTED, safe state'; pillCls = 'pill warn'; }
+    else if (det.last_result && det.last_result !== 'DONE') { pillCls = 'pill bad'; }
+    else if (det.last_result === 'DONE') { pillCls = 'pill good'; }
+    pill.textContent = pillText; pill.className = pillCls;
+    panel.classList.toggle('is-working', det.status === 'working');
+    panel.classList.toggle('is-bad', bad);
+    $('cnt-' + d.key).textContent = `${st.commands} commands, ${st.aborts} aborts`;
+    $('note-' + d.key).textContent = det.note || (det.status === 'idle' ? 'Waiting for a command' : '');
+    $('bar-' + d.key).style.width = (det.status === 'working' ? det.progress * 100 : 0) + '%';
+    $('flowname-' + d.key).textContent = det.flow ? `Flowchart: ${det.flow}` : 'Flowchart';
+    $('ladder-' + d.key).innerHTML = det.flow ? ladderHTML(det.flow, det) : '<div class="small">No command yet.</div>';
+    $('sens-' + d.key).innerHTML = sensorsHTML(det.sensors);
+    $('path-' + d.key).innerHTML = pathHTML(det.path, det.flow);
+    const sc = Object.entries(st.script).map(([step, list]) => `${step}: ${list.join(', ')}`).join(' | ');
+    $('script-' + d.key).textContent = sc ? 'queued: ' + sc : '';
+  });
+
+  // camera card
+  const cp = $('pill-camera');
+  if (s.camera.silent) { cp.textContent = 'dead feed'; cp.className = 'pill bad'; }
+  else if (!s.camera.ok) { cp.textContent = 'bad image'; cp.className = 'pill bad'; }
+  else { cp.textContent = 'ok'; cp.className = 'pill good'; }
+  $('info-camera').textContent = s.camera.usable ? 'Supervisor sees a usable feed' : 'Supervisor sees NO usable feed';
+  $('cam-bad').checked = !s.camera.ok;
+  $('cam-dead').checked = s.camera.silent;
+
+  // stack light
+  const lt = s.light;
+  document.querySelectorAll('#stack i').forEach(i => {
+    const on = lt && i.className.split(' ')[0] === lt.color.toLowerCase();
+    i.classList.toggle('on', !!on);
+    i.classList.toggle('flash', !!on && lt.mode === 'FLASH');
+  });
+  $('info-stack').textContent = lt ? `${lt.color.toLowerCase()}, ${lt.mode.toLowerCase()}` : 'no signal yet';
+
+  renderCell(s);
+}
+
+function renderCell(s) {
+  const get = k => (s.stubs[k] && s.stubs[k].detail) ? s.stubs[k].detail : null;
+  const loco = get('locomotion'), plate = get('plate'), screw = get('screw'), fast = get('fastening');
+  if (!plate || !screw || !fast) return;
+  const moving = loco && loco.status === 'working';
+  const cam = s.camera.ok && !s.camera.silent;
+  $('cone').setAttribute('fill', cam ? 'var(--green)' : 'var(--red)');
+  $('cone').setAttribute('opacity', cam ? '.13' : '.2');
+  $('light').setAttribute('opacity', s.camera.ok ? '1' : '.25');
+
+  const px = plate.sensors.plate_x;
+  const showPlate = !moving && px > 0.01 && !['cleared', 'in hopper'].includes(plate.sensors.plate_position);
+  const pl = $('plate');
+  pl.setAttribute('x', (110 - (1 - px) * 190).toFixed(1));
+  pl.setAttribute('opacity', showPlate ? '1' : '0');
+
+  const sp = screw.sensors.screw_position;
+  const sc = $('screw');
+  const showScrew = !moving && ['loading', 'loaded', 'not aligned'].includes(sp);
+  const offset = sp === 'not aligned' ? 30 : 0;
+  sc.setAttribute('transform', `translate(${160 + offset},${sp === 'loading' ? 150 : 166})`);
+  sc.setAttribute('opacity', showScrew ? (sp === 'loading' ? '.5' : '1') : '0');
+
+  const depth = fast.sensors.drill_depth;
+  $('drill').setAttribute('transform', `translate(0,${(depth * 52 + 60).toFixed(1)})`);
+  $('drilltxt').textContent = fast.sensors.torque_nm > 0.05 ? `${fast.sensors.torque_nm.toFixed(1)} N·m` : '';
+  $('flash').setAttribute('r', fast.sensors.photo === 'taking' ? '16' : '0');
+  $('celltxt').textContent = moving ? 'robot is driving' : '';
+
+  const bits = [];
+  bits.push(`plate: ${plate.sensors.plate_position}`);
+  bits.push(`screw: ${screw.sensors.screw_position}`);
+  bits.push(`drill: ${fast.sensors.drill}`);
+  $('cellinfo').textContent = bits.join('   |   ');
+}
+
+function renderLog(s) {
+  const key = s.trace_total + ':' + $('showhb').checked;
+  if (key === lastTraceKey) return;
+  lastTraceKey = key;
+  $('tracecount').textContent = `${s.trace_total} messages total`;
+  const wrap = $('logwrap');
+  $('log').innerHTML = s.trace.map(m => {
+    const bits = [];
+    if (m.row != null) bits.push(`r${m.row} s${m.spot}`);
+    if (m.step) bits.push(m.step);
+    if (m.attempt) bits.push('try ' + m.attempt);
+    if (m.code) bits.push(m.code);
+    if (m.params && Object.keys(m.params).length) bits.push(JSON.stringify(m.params));
+    const id = m.id != null ? ` #${m.id}` : (m.ref != null ? ` ↩ #${m.ref}` : '');
+    return `<tr><td class="t">${m.time.toFixed(2)}</td><td class="who">${esc(m.src)} → ${esc(m.dst)}</td>`
+      + `<td><span class="ty ${esc(m.type)}">${esc(m.type)}</span>${id}</td><td>${esc(bits.join(' · '))}</td></tr>`;
+  }).join('');
+  if ($('follow').checked) wrap.scrollTop = wrap.scrollHeight;
+}
+
+/* ---------------- polling ---------------- */
+async function refresh() {
+  try {
+    const s = await api('/api/state?hb=' + ($('showhb').checked ? 1 : 0));
+    $('offline').classList.add('hidden');
+    render(s);
+  } catch (e) {
+    $('offline').classList.remove('hidden');
+  }
+}
+setInterval(refresh, 200);
+refresh();
+
+/* ---------------- tests tab ---------------- */
+function showTab(name) {
+  $('view-sim').classList.toggle('hidden', name !== 'sim');
+  $('view-tests').classList.toggle('hidden', name !== 'tests');
+  $('tab-sim').classList.toggle('on', name === 'sim');
+  $('tab-tests').classList.toggle('on', name === 'tests');
+  if (name === 'tests') pollTests();
+}
+async function runTests() { await api('/api/run_tests', {}); pollTests(); }
+let testTimer = null;
+async function pollTests() {
+  const r = await api('/api/tests');
+  $('runtests').disabled = r.running;
+  $('runtests').textContent = r.running ? 'Running...' : 'Run all tests';
+  const bad = r.tests.filter(t => t.result !== 'ok').length;
+  $('testbadge').innerHTML = r.running ? '' : (r.status
+    ? `<span class="badge ${bad || r.status !== 'OK' ? 'bad' : 'good'}">${r.status === 'OK' ? 'ALL PASSED' : esc(r.status)}</span>` : '');
+  $('testran').textContent = r.ran || '';
+  const groups = {};
+  r.tests.forEach(t => (groups[t.group] = groups[t.group] || []).push(t));
+  $('testlist').innerHTML = Object.entries(groups).map(([g, list]) =>
+    `<div class="testgroup">${esc(g.replace('tests.', ''))}</div>` +
+    list.map(t => `<div class="${t.result === 'ok' ? 't-ok' : 't-bad'}">${esc(t.name.replace(/^test_/, '').replace(/_/g, ' '))}${t.result === 'ok' ? '' : ' — ' + esc(t.result)}</div>`).join('')).join('');
+  $('testraw').textContent = r.output || '';
+  clearTimeout(testTimer);
+  if (r.running) testTimer = setTimeout(pollTests, 500);
+}
+</script>
+</body>
+</html>

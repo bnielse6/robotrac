@@ -1,0 +1,10 @@
+# PlatformIO build output and downloaded toolchains (about 5 GB)
+.pio/
+.vscode/
+
+# Python
+__pycache__/
+*.pyc
+
+# Generated exports
+onenote_export/

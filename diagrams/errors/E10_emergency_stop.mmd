@@ -1,0 +1,16 @@
+sequenceDiagram
+  autonumber
+  actor Op as Operator
+  participant B as E-stop button
+  participant S as Supervisor
+  participant All as All subsystems
+  Note over B,All: Can happen at any moment, in any state.
+  Op->>B: Press E-stop
+  B->>S: ESTOP
+  S->>All: CMD_ABORT (stop all actuators)
+  All-->>S: STOPPED
+  S->>Op: ALERT: E-stop active
+  Note over S: Stack light turns red, so the operator sees it from across the roof
+  Note over S: Position and step are no longer trusted.<br/>Robot does not resume the step.
+  Op->>S: Manual reset
+  Note over S: Supervisor returns to IDLE.<br/>Operator checks the robot and presses START again.

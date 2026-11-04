@@ -1,0 +1,24 @@
+sequenceDiagram
+  autonumber
+  actor Op as Operator screen
+  participant S as Supervisor
+  participant F as Fastening
+  Note over S,F: Robot is at spot 13, Fastening step.<br/>Torque was reached, so the live camera takes a photo that must be accepted.
+  S->>F: CMD_START (spot 13)
+  F-->>S: FAULT (PHOTO_REJECTED), drill retracted
+  S->>F: CMD_START (retry 1 of 2, retake photo)
+  F-->>S: FAULT (PHOTO_REJECTED)
+  S->>F: CMD_START (retry 2 of 2, retake photo)
+  F-->>S: FAULT (PHOTO_REJECTED)
+  S->>Op: ALERT: robot stopped. Spot 13, Fastening, PHOTO_REJECTED
+  Note over S: Stack light turns flashing amber, so the operator sees it from across the roof
+  Note over S: Robot waits at spot 13.<br/>Nothing moves.<br/>Operator can watch the live feed.
+  alt Operator can fix it
+    Op->>S: RESOLVED (fixed on the robot)
+    S->>F: CMD_START (resume same step)
+    F-->>S: DONE
+    Note over S: Spot continues with the next step
+  else Operator cannot fix it (last resort)
+    Op->>S: SKIP_SPOT
+    Note over S: Supervisor logs the spot as skipped, then advances to the next spot
+  end

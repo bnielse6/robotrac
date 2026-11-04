@@ -1,0 +1,41 @@
+sequenceDiagram
+  autonumber
+  actor Op as Operator
+  participant S as Supervisor
+  participant L as Locomotion
+  participant P as Plate
+  participant C as Screw
+  participant F as Fastening
+  participant K as Live camera
+  participant Lt as Stack light
+
+  Op->>S: START
+  S-->>Lt: LIGHT: steady green
+  Note over S,K: Start at bottom left. The camera sits in an enclosure with its own light, and streams to the operator screen the whole run.
+  Note over S,K: Row 1, spot 1 (route map)
+  S->>L: CMD_START (drive to spot 1)
+  L-->>S: DONE (on beam, at right spot)
+  S->>P: CMD_START
+  P->>K: is the plate in fastening position?
+  K-->>P: YES, plate arrived
+  P->>K: is the placement good? (with tripwire)
+  K-->>P: YES, approved
+  P-->>S: DONE
+  S->>C: CMD_START
+  C->>K: are the plate and screw both in the right spot?
+  K-->>C: YES, both in position, ready to fasten
+  C-->>S: DONE
+  S->>F: CMD_START
+  F->>K: take photo of fastened screw
+  K-->>F: photo accepted
+  F-->>S: DONE (torque OK, photo accepted)
+  Note over S,K: More spots in this row, so drive straight
+  S->>L: CMD_START (drive to spot 2)
+  L-->>S: DONE
+  Note over S,K: Spots 2 to n repeat Plate, Screw, Fastening
+  Note over S,K: End of row, more rows left
+  S->>L: CMD_START (turn right twice)
+  L-->>S: DONE (turned, front sensor on next beam)
+  Note over S,K: Row 2 runs the opposite direction. Its turn at the end will be left twice.
+  Note over S,K: After the last spot of the last row the run is complete.
+  S-->>Lt: LIGHT: flashing green

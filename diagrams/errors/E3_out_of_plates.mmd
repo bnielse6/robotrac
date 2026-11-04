@@ -1,0 +1,20 @@
+sequenceDiagram
+  autonumber
+  actor Op as Operator screen
+  participant S as Supervisor
+  participant P as Plate
+  Note over S,P: Robot is at spot 9, Plate step.<br/>The plate magazine is empty.<br/>No retry, since retrying cannot help.
+  S->>P: CMD_START (spot 9)
+  P-->>S: NEED_REFILL (plates)
+  S->>Op: ALERT: robot stopped. Spot 9, Plate, NEED_REFILL
+  Note over S: Stack light turns flashing amber, so the operator sees it from across the roof
+  Note over S: Robot waits at spot 9.<br/>Nothing moves.<br/>Operator can watch the live feed.
+  alt Operator can fix it
+    Op->>S: RESOLVED (fixed on the robot)
+    S->>P: CMD_START (resume same step)
+    P-->>S: DONE
+    Note over S: Spot continues with the next step
+  else Operator cannot fix it (last resort)
+    Op->>S: SKIP_SPOT
+    Note over S: Supervisor logs the spot as skipped, then advances to the next spot
+  end

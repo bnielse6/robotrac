@@ -1,0 +1,64 @@
+flowchart LR
+  classDef sup fill:#1f3a5f,color:#fff,stroke:#0b1d33
+  classDef sub fill:#e8f0fb,stroke:#1f3a5f
+  classDef sen fill:#fff4d6,stroke:#b58900
+  classDef ext fill:#eee,stroke:#555
+  classDef log fill:#fde8e8,stroke:#b33
+  classDef cam fill:#e6f7e9,stroke:#2a8a3e
+
+  BTN([Start button<br/>E-stop]):::ext
+  STK([Stack light<br/>green, amber, red]):::ext
+  HMI([Operator screen<br/>alerts, fault history<br/>live camera view]):::ext
+
+  subgraph SUPG [Supervisor]
+    direction TB
+    SUP{{State machine<br/>tracks row and spot}}:::sup
+    MAP[(Route map<br/>rows, spots, distances)]:::log
+    MAP --> SUP
+    LOG[(Fault log<br/>spot, subsystem, code)]:::log
+    SUP --> LOG
+  end
+
+  subgraph L [Locomotion]
+    direction LR
+    S1(Beam sensors<br/>Front sensor<br/>Encoders):::sen --> LOC[Straight + Turn]:::sub
+  end
+  subgraph P [Plate]
+    direction LR
+    S2(Plate sensors<br/>Tripwire):::sen --> PLT[Plate subsystem]:::sub
+  end
+  subgraph C [Screw]
+    direction LR
+    S3(Screw sensor):::sen --> SCR[Screw subsystem]:::sub
+  end
+  subgraph F [Fastening]
+    direction LR
+    S4(Torque sensor):::sen --> FST[Fastening subsystem]:::sub
+  end
+
+  BTN -->|START / ESTOP| SUP
+  LOG -->|fault history| HMI
+  SUP -->|ALERT: robot stopped, spot + subsystem + code| HMI
+  HMI -->|RESOLVED / SKIP_SPOT| SUP
+  SUP -->|LIGHT: colour and pattern| STK
+
+  SUP -->|CMD_START| LOC
+  SUP -->|CMD_START| PLT
+  SUP -->|CMD_START| SCR
+  SUP -->|CMD_START| FST
+  LOC -.->|DONE / FAULT| SUP
+  PLT -.->|DONE / FAULT / NEED_REFILL| SUP
+  SCR -.->|DONE / FAULT / NEED_REFILL| SUP
+  FST -.->|DONE / FAULT| SUP
+
+  subgraph ENC [Enclosed camera area]
+    direction TB
+    CAM(((Live camera))):::cam
+    LIGHT(Light<br/>steady lighting):::sen
+  end
+  LIGHT -.->|lights the area| CAM
+  CAM -->|plate arrived, placement| PLT
+  CAM -->|plate + screw in right spot| SCR
+  CAM -->|final photo| FST
+  CAM -.->|feed alive?| SUP
+  CAM -.->|live video| HMI

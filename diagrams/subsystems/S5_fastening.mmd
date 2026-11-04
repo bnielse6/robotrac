@@ -1,0 +1,25 @@
+flowchart TD
+  classDef start fill:#1f3a5f,color:#fff,stroke:#0b1d33
+  classDef ok fill:#e6f7e9,stroke:#2a8a3e
+  classDef bad fill:#fde8e8,stroke:#b33
+  classDef act fill:#e8f0fb,stroke:#1f3a5f
+  A([CMD_START: fasten the screw]):::start
+  B[Drill the screw in]:::act
+  C{Right torque?<br/>torque sensor}
+  D{10 second<br/>limit used up?}
+  E[Keep screwing]:::act
+  F[Live camera takes a photo]:::act
+  G{Photo accepted?}
+  S1[Retract the drill<br/>safe to move]:::act
+  S2[Retract the drill<br/>safe to move]:::act
+  S3[Retract the drill<br/>safe to move]:::act
+  X1([FAULT: TORQUE_TIMEOUT]):::bad
+  X2([FAULT: PHOTO_REJECTED]):::bad
+  OK([DONE]):::ok
+  A --> B --> C
+  C -- NO --> D
+  D -- NO --> E --> C
+  D -- YES --> S1 --> X1
+  C -- YES --> F --> G
+  G -- NO --> S2 --> X2
+  G -- YES --> S3 --> OK

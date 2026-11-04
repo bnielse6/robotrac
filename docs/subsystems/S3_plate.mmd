@@ -1,0 +1,26 @@
+flowchart TD
+  classDef start fill:#1f3a5f,color:#fff,stroke:#0b1d33
+  classDef ok fill:#e6f7e9,stroke:#2a8a3e
+  classDef bad fill:#fde8e8,stroke:#b33
+  classDef act fill:#e8f0fb,stroke:#1f3a5f
+  A([CMD_START: place a plate]):::start
+  B{Plates available?}
+  X0([NEED_REFILL: plates]):::bad
+  C[Feed the plate toward<br/>fastening position]:::act
+  D{Live camera: did the<br/>plate arrive?}
+  E{Time limit<br/>used up?}
+  F[Push the plate again]:::act
+  X1([FAULT: PLATE_NOT_ARRIVED<br/>feed stopped, plate clear]):::bad
+  G[Release the plate]:::act
+  H{Live camera + tripwire<br/>approve the placement?}
+  X2([FAULT: PLACEMENT_REJECTED<br/>plate released and clear]):::bad
+  I([DONE]):::ok
+  A --> B
+  B -- NO --> X0
+  B -- YES --> C --> D
+  D -- NO --> E
+  E -- NO --> F --> D
+  E -- YES --> X1
+  D -- YES --> G --> H
+  H -- NO --> X2
+  H -- YES --> I

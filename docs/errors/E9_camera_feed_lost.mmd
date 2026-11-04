@@ -1,0 +1,17 @@
+sequenceDiagram
+  autonumber
+  actor Op as Operator screen
+  participant S as Supervisor
+  participant K as Live camera
+  participant A as Active subsystem
+  Note over S,K: Any time during a run.<br/>The Supervisor checks that the live feed is alive.<br/>Plate, screw and photo checks all depend on it.
+  S->>A: CMD_START (spot 12, current step)
+  K--xS: feed lost (no frames, lens blocked, or image too dark)
+  S->>A: CMD_ABORT (stop current step safely)
+  A-->>S: STOPPED, safe state
+  S->>Op: ALERT: robot stopped. Spot 12, Camera, CAMERA_FEED_LOST
+  Note over S: Stack light turns flashing amber, so the operator sees it from across the roof
+  Note over S: Robot waits at spot 12.<br/>No retry and no skip, because<br/>nothing can be verified without the camera.
+  Op->>S: RESOLVED (lens cleaned, cable fixed or light replaced, feed is back)
+  S->>A: CMD_START (spot 12, resume same step)
+  A-->>S: DONE

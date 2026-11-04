@@ -1,0 +1,21 @@
+stateDiagram-v2
+  state "IDLE<br/>waiting for the operator to press START<br/>stack light: flashing green" as IDLE
+  state "DRIVE_TO_SPOT<br/>drive straight along the row to the next spot<br/>stack light: steady green from here until the run ends" as DRIVE
+  state "PLATE<br/>place a plate, live camera confirms it arrived, camera and tripwire check it" as PLATE
+  state "SCREW<br/>load a screw, live camera confirms plate and screw are in the right spot" as SCREW
+  state "FASTEN<br/>drill to the right torque, live camera photo must be accepted" as FASTEN
+  state ROW_CHECK <<choice>>
+  state "TURN_TO_NEXT_ROW<br/>turn right twice or left twice, alternating each row" as TURN
+  state "RUN_COMPLETE<br/>all rows done, operator reviews the log<br/>stack light: flashing green" as DONE
+
+  [*] --> IDLE
+  IDLE --> DRIVE : START button
+  DRIVE --> PLATE : at the right spot
+  PLATE --> SCREW : plate approved
+  SCREW --> FASTEN : screw seen
+  FASTEN --> ROW_CHECK : screw fastened, photo accepted
+  ROW_CHECK --> DRIVE : more spots in this row
+  ROW_CHECK --> TURN : end of row (route map), more rows left
+  ROW_CHECK --> DONE : last spot of last row
+  TURN --> DRIVE : on the next beam
+  DONE --> IDLE : operator reviews

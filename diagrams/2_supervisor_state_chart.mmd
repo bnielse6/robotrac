@@ -1,0 +1,49 @@
+stateDiagram-v2
+  state "IDLE<br/>waiting for START<br/>stack light: flashing green" as IDLE
+  state "RUN_COMPLETE<br/>all rows done<br/>stack light: flashing green" as DONE
+  state "ESTOP<br/>everything stopped, manual reset needed<br/>stack light: red" as ESTOP
+
+  [*] --> IDLE
+  IDLE --> RUNNING : START button
+
+  state "RUNNING<br/>normal operation, includes retries and stops<br/>stack light: steady green, except in WAIT_OPERATOR" as RUNNING {
+    state "DRIVE_TO_SPOT<br/>drive straight along the row" as DRIVE_TO_SPOT
+    state "PLATE<br/>place plate, live camera confirms arrival, tripwire checks placement" as PLATE
+    state "SCREW<br/>load screw, live camera confirms plate and screw in right spot" as SCREW
+    state "FASTEN<br/>drill to torque, live camera photo accepted" as FASTEN
+    state "TURN_TO_NEXT_ROW<br/>turn right-right or left-left, alternating" as TURN_TO_NEXT_ROW
+    state "WAIT_OPERATOR<br/>ROBOT STOPPED. Alert shows spot, subsystem and code, with the live camera feed. Waits for the operator<br/>stack light: flashing amber" as WAIT_OPERATOR
+    state ROW_CHECK <<choice>>
+
+    [*] --> DRIVE_TO_SPOT
+    DRIVE_TO_SPOT --> PLATE : Locomotion DONE
+    PLATE --> SCREW : Plate DONE
+    SCREW --> FASTEN : Screw DONE
+    FASTEN --> ROW_CHECK : Fastening DONE (spot complete)
+
+    ROW_CHECK --> DRIVE_TO_SPOT : more spots in this row
+    ROW_CHECK --> TURN_TO_NEXT_ROW : end of row (route map), more rows left
+    TURN_TO_NEXT_ROW --> DRIVE_TO_SPOT : Turn DONE
+
+    PLATE --> PLATE : FAULT, retries < N (retry)
+    SCREW --> SCREW : FAULT, retries < N (retry)
+    FASTEN --> FASTEN : FAULT, retries < N (retry)
+
+    PLATE --> WAIT_OPERATOR : retries used up, NEED_REFILL, or camera feed lost
+    SCREW --> WAIT_OPERATOR : retries used up, NEED_REFILL, or camera feed lost
+    FASTEN --> WAIT_OPERATOR : retries used up, or camera feed lost
+    DRIVE_TO_SPOT --> WAIT_OPERATOR : Locomotion FAULT
+    TURN_TO_NEXT_ROW --> WAIT_OPERATOR : Locomotion FAULT
+
+    WAIT_OPERATOR --> PLATE : RESOLVED (resume plate)
+    WAIT_OPERATOR --> SCREW : RESOLVED (resume screw)
+    WAIT_OPERATOR --> FASTEN : RESOLVED (resume fastening)
+    WAIT_OPERATOR --> DRIVE_TO_SPOT : RESOLVED (resume driving)
+    WAIT_OPERATOR --> TURN_TO_NEXT_ROW : RESOLVED (resume turn)
+    WAIT_OPERATOR --> ROW_CHECK : SKIP SPOT (logged, last resort)
+  }
+
+  ROW_CHECK --> DONE : last spot of last row done
+  DONE --> IDLE : operator reviews fault log
+  RUNNING --> ESTOP : E-stop (any state)
+  ESTOP --> IDLE : manual reset
