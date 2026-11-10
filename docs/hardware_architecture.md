@@ -6,7 +6,7 @@ Decision record for what runs the control system. It goes with `complete_system_
 
 A **Raspberry Pi 5 (8 GB)** is the Supervisor and vision computer. **Microcontrollers** run the real-time subsystems. A **hardware E-stop** sits outside both.
 
-**Confirmed:** the microcontroller is an **ESP32** and the Pi-to-ESP32 link is **USB serial**. CAN is no longer planned unless vibration or noise problems appear.
+**Confirmed:** the microcontroller is an **ESP32** and the Pi-to-ESP32 link is **USB serial**. CAN was dropped unless vibration or noise problems appeared. **Update 2026-11-09:** the subsystems are spread out on the chassis, so the plan is now two ESP32 nodes (D17 in `design_concept.md`). CAN with a gateway ESP32 (the Pi stays on USB serial) is the leading option for the link between nodes, with RS-485 as the simpler alternative. Undecided until cable lengths and bench noise are known.
 
 ## Who runs what
 

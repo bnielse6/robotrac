@@ -38,6 +38,10 @@ The control system for a robot that fastens plates and screws along rows of a ro
 | `docs/firmware_guide.md` | The ESP32 firmware, how to build it, and how to bring it up |
 | `docs/next_steps.md` | Status, decision log, open questions, known gaps, and the roadmap in phases |
 | `docs/setup_guide.md` | Tools installed on this PC, commands, where files go, troubleshooting, Pi setup outline |
+| `supervisor/roofbot/planner_svg.py`, `supervisor/plan_preview.py` | SVG preview of a planned layout, with named layers and one style block to restyle |
+| `supervisor/roofbot/planner.py` | Roof layout planner: whole 4x8 ft boards, MF-27 fastener pattern, crest snap, lawnmower rows (not yet wired into the Supervisor) |
+| `docs/brainstorm-2026-11-09.md` | Session notes: path planner, deck and fastening pattern, SVG preview, Supervisor communication, one versus two ESP32s |
+| `docs/pin_map.md` | Draft pin map: every hardware signal, pin count, location and noise column, to decide one ESP32 or more |
 | `docs/design_concept.md` | The long-term design reference: requirements, architecture summary, navigation and sensing concept, and the design decision log. Updated whenever a decision changes |
 | `docs/navigation/` | Navigation work: `navigation-notes.md` (the user's notes), `navigation-brainstorm-2026-11-04.md` (the discussion, buy list and bench test plan) and `navigation-plan-2026-11-04.md` (conclusions, what is next, open questions) |
 
@@ -47,7 +51,7 @@ The control system for a robot that fastens plates and screws along rows of a ro
 |---|---|
 | Design (flowcharts, state chart, errors) | Done |
 | Message schema | First draft, reviewed against the simulator |
-| Supervisor, router, camera service | Written and tested (87 tests) |
+| Supervisor, router, camera service | Written and tested (109 tests) |
 | Simulator and dashboard | Written and tested. The dashboard was checked in a headless browser. |
 | Pi serial link and `robot_main.py` | Written, **not yet tried on hardware** |
 | ESP32 firmware | Written and **compiles** (simulated and real-hardware builds). **Not yet run on a board.** |

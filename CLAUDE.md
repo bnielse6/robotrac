@@ -9,7 +9,7 @@ Control system for a roofing robot (MSE 4499 capstone). A Raspberry Pi 5 runs a 
 Python 3.12 is installed per-user and is not on the PATH of terminals opened before the install. If `python` fails, use `%LOCALAPPDATA%\Programs\Python\Python312\python.exe`. All Python commands run from `supervisor/`:
 
 ```
-python -m unittest discover -s tests -t .                 # all tests (87, ~0.1 s)
+python -m unittest discover -s tests -t .                 # all tests (109, ~0.1 s)
 python -m unittest tests.test_supervisor.Retries -v       # one class
 python -m unittest tests.test_supervisor.Retries.test_three_failures_stop_and_alert   # one test
 python dashboard.py                                       # visual simulator at http://127.0.0.1:8765 (--port N, --no-browser)

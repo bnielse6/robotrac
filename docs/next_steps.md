@@ -24,7 +24,7 @@ Where the project stands, what was decided, what is still open, and what to do n
 | Design: flowcharts, state chart, error handling (E1 to E10) | Done | `complete_system_guide.md`, `diagrams/` (in `docs/`) |
 | Hardware architecture | Decided | `hardware_architecture.md` |
 | Message schema | Drafted, used by both sides | `message_schema.md`, `roofbot/messages.py` |
-| Supervisor (Python) | Written and tested in simulation | 87 tests pass |
+| Supervisor (Python) | Written and tested in simulation | 109 tests pass |
 | Router, camera service | Written and tested | `tests/test_router.py` |
 | Simulator and dashboard | Written, tested, and checked in a headless browser | `simulator_guide.md` |
 | Detailed subsystem model (S1 to S5) | Written and tested | `roofbot/detail.py`, `tests/test_detail.py` |
@@ -124,7 +124,7 @@ These need your decision. The first four were already open in `complete_system_g
 7. **After a power loss mid-run**, should the robot start again from the beginning, or can the operator tell it which spot it is at?
 8. **Which device is the operator screen?** A tablet over the Pi's Wi-Fi is assumed. Is that right, and is Wi-Fi safe to depend on up there?
 9. **Which camera, light and enclosure?** And is a Pi camera module enough, or is a USB camera preferred?
-10. **One ESP32 or more?** One is assumed. The pin count and wiring noise from the drill motor may argue for two.
+10. **One ESP32 or more?** Direction decided 2026-11-09 (D17 in `design_concept.md`): plan for **two** nodes, a Locomotion node (motors, encoders, IMU, sensor array) and a Tool node (Plate, Screw, Fastening), and run one ESP32 on the bench for now. Reasons: the draft pin map (`pin_map.md`) comes to about 30 GPIO plus I2C and is expected to grow, the subsystems are spread out on the chassis, and the drill is a noise source. **Still open:** the transport between nodes (leaning CAN with a gateway ESP32 so the Pi stays on USB serial, RS-485 as the simpler alternative), the board (classic ESP32 versus ESP32-S3, see `pin_map.md` P1), and the cable lengths and measured noise that will decide it. CAN is back on the table, replacing "no longer planned" in `hardware_architecture.md`.
 11. **Is skip allowed after an out-of-supply stop?** The guide says yes (E3 and E5 are in E1 to E7). It is implemented that way.
 12. **Stack light colours.** The colours and patterns are proposed, not confirmed. Do you want a buzzer, or a different pattern for a refill stop? The real lamp voltage and the driver circuit (relays or MOSFETs) are also undecided.
 

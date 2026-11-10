@@ -75,10 +75,13 @@ Two jobs, two signals:
 
 | # | Question | Needed from |
 |---|---|---|
-| Q1 | Flute pitch, crest width, flute depth, densdeck thickness | User, measuring |
+| Q1 | Flute pitch, crest width, flute depth. (Densdeck thickness answered 2026-11-09: 15.9 mm.) | User, measuring |
 | Q2 | Achievable sensor height above the densdeck | User and mechanical design |
 | Q3 | What the "3 ft wide beam" in `navigation-notes.md` referred to, now that "beam" means the flute | User |
 | Q4 | Real tolerance of the screw and drill, which sets how firm the +/-0.5 mm is | User |
 | Q5 | Which sensor wins the bench test | Bench test |
 | Q6 | How the cross-track error reaches Locomotion (a new message, or inside the Locomotion subsystem) | Claude and user, after Q5 |
 | Q7 | Whether any absolute fix is needed beyond crest counting (magnets, a camera) | Simulator results |
+| Q8 | Is there an insulation layer between the steel deck and the densdeck, and how thick? It adds to the sensor standoff. The installation guide's cutaway shows one. (Added 2026-11-09) | User, will check |
+| Q9 | **Answered 2026-11-09**: Carlisle MF-27 (`Fastning Report.pdf`). Per 4x8 ft board, 5 fasteners (Dens-Deck over insulation of at least 40 mm) at (12,12), (36,12), (24,48), (12,84), (36,84) in, or 8 fasteners (re-roof, polyiso under 40 mm) at x = 12 and 36 in, y = 12, 36, 60, 84 in. 4x4 ft board: 4 fasteners at x = 12 and 36, y = 12 and 36. Which variant applies depends on the roof, so it is a parameter. Board long edges run along the flutes. | Done |
+| Q10 | Flute pitch decides whether spots land on crests. Not measured yet. | User, measuring |

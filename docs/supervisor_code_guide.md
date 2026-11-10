@@ -41,6 +41,8 @@ supervisor/
   roofbot/                 the package
     messages.py            message types, fault codes, JSON line encode and decode
     route.py               the route map
+    planner.py             roof layout planner (boards, spots, rows)
+    planner_svg.py         draws a planned layout as an SVG
     supervisor.py          the Supervisor state machine
     router.py              Pi glue: Supervisor + camera service + serial link + operator
     camera_service.py      answers the ESP32's camera questions
@@ -51,7 +53,7 @@ supervisor/
   ui/index.html            the dashboard page
   run_sim.py               print a simulated run in the terminal
   robot_main.py            run the real thing on the Pi
-  tests/                   87 tests
+  tests/                   109 tests
   README.md                short how-to
 ```
 
@@ -78,6 +80,20 @@ To add a message type: add it to `MsgType`, add its required fields to `_REQUIRE
 ### `roofbot/route.py`
 
 `RowPlan(spots, spacing_mm, start_offset_mm)` is one row. `Route(rows)` is the list of rows. It answers three questions: how many spots are in a row (`spots_in_row`), how far to drive to a spot (`distance_to_spot_mm`: the start offset for spot 1, the spacing for the rest), and which way to turn at the end of a row (`turn_direction`: right after odd rows, left after even). Rows and spots are numbered from 1.
+
+### `roofbot/planner.py`
+
+The roof layout planner. Pure functions, no I/O, and nothing else imports it yet. `plan(RoofSpec)` returns a `Layout`. `RoofSpec` holds the roof width (across the flutes) and length (along them), the `PatternVariant` (`FIVE` or `EIGHT`, one per roof), an edge setback, and an optional flute pitch and crest phase (by default a crest lies under the board edges, as the installation guide asks, and the phase actually used is in `Layout.crest_phase_mm`). It tiles whole 4 x 8 ft boards, centred in the usable area, stamps the Carlisle MF-27 fastener pattern on each, snaps each spot to the nearest crest when a pitch is given, and orders the spots into lawnmower rows. Cut boards, the running-bond stagger and start corners other than the origin are not modelled yet.
+
+The frame is millimetres with the origin at the start corner, x across the flutes and y along them. Heading uses the maths convention (90 is +y, 270 is -y). A `Waypoint` is `(row, spot, x, y, heading, crest_offset)`. A `PlannedRow` has its spots in driving order, the entry edge, `distances_mm()` (to spot 1 from the entry edge, then spot to spot) and `crests_to_next` (crests crossed at the row change, or `None` with no pitch). Spot spacing is uneven, so a `Layout` does not convert to `Route` yet. The pattern positions are in `docs/navigation/Fastning Report.pdf`.
+
+### `roofbot/planner_svg.py` and `plan_preview.py`
+
+`layout_to_svg(spec, layout)` returns the text of an SVG picture of a planned layout, with no I/O. `plan_preview.py` (in `supervisor/`) writes it to a file: `python plan_preview.py --width 5000 --length 9800 --variant eight --pitch 152.4 -o roof.svg`. Open the file in a browser or Inkscape. The drawing is to scale (1 unit is 1 mm) with the start corner at the bottom left and the flutes running up the page.
+
+Each kind of thing is its own named group, so a whole layer can be selected, hidden or restyled: `deck`, `flutes`, `boards`, `outline`, `rows`, `spots`, `labels`. All colours and line widths are in the one `<style>` block at the top, as CSS classes. To make it look more like a roof, edit that block. Edits only go one way: nothing reads an edited SVG back into the planner.
+
+A red spot is on a crest. An amber spot is offset from the crest, with a grey ring where the spec puts it and a thin line between them. Dashed rectangles are boards, arrows show the direction of travel, and the label between rows is the crest count for the sideways move. The flute lines appear only if a pitch is given. The pitch is a placeholder until measured, and by default a crest is placed under the board edges, as the installation guide asks.
 
 ### `roofbot/supervisor.py`
 
@@ -207,7 +223,7 @@ From the `supervisor` folder:
 
 ## 8. Tests
 
-87 tests in `tests/`. Run them from the dashboard's Tests tab or with the command above. They should pass after every change.
+109 tests in `tests/`. Run them from the dashboard's Tests tab or with the command above. They should pass after every change.
 
 | File | Covers |
 |---|---|

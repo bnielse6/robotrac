@@ -88,6 +88,11 @@ Working detail is in `navigation/navigation-plan-2026-11-04.md`. Reasoning is in
 | D11 | 2026-11-04 | Operator-placed corner is a coarse prior. First crest detection snaps the lateral position. | A small placement error would otherwise repeat on every row | Proposed |
 | D12 | 2026-11-04 | Encoders and the layout choose the crest. The array only holds the lock. | All crests look alike | Proposed |
 | D13 | 2026-11-04 | A waypoint generator outputs `(row, spot, x, y, heading)` | The route map is hand-programmed today | Proposed |
+| D14 | 2026-11-09 | Spots come from the Carlisle MF-27 board pattern stamped on a grid of 4x8 ft boards, not from a uniform spacing. The pattern variant (5 or 8 fasteners per 4x8 board) is a roof-dependent parameter. | The spec fixes fastener positions per board. See `navigation/Fastning Report.pdf` | Decided |
+| D15 | 2026-11-09 | The 8 ft board edges run along the flutes, so rows run along the board length. | User, 2026-11-09 | Decided |
+| D16 | 2026-11-09 | Each spot is snapped to the nearest crest and its offset is reported. | Spot positions in inches may not land on crests, depending on flute pitch | Proposed, needs flute pitch |
+| D17 | 2026-11-09 | Plan for two ESP32 nodes: Locomotion (motors, encoders, IMU, sensor array) and Tool (Plate, Screw, Fastening). Bench work stays on one board. Transport between nodes is open, leaning CAN with a gateway. | Pin count is about 30 and growing, subsystems are spread out, the drill is a noise source. See `pin_map.md` | Proposed direction, transport undecided |
+| D18 | 2026-11-09 | Path planning stays out of the Supervisor. `planner.py` runs before the run and hands the Supervisor a `Route`. Cross-track correction runs in Locomotion firmware. | The Supervisor must stay a pure state machine with no I/O | Decided |
 
 Earlier decisions made before this document (Pi 5 plus ESP32, USB serial, hardware E-stop, retries counted by the Supervisor, and others) are in `next_steps.md` section 2 and `hardware_architecture.md`.
 
@@ -107,3 +112,5 @@ See `navigation/navigation-plan-2026-11-04.md` section 6 for the full list. The 
 | Date | Change |
 |---|---|
 | 2026-11-04 | Document created. Navigation decisions D1 to D13 recorded. |
+| 2026-11-09 | Added D14 to D16 (fastening pattern from Carlisle MF-27, board orientation, snap to crest). |
+| 2026-11-09 | Added D17 (two-node ESP32 direction) and D18 (planner outside the Supervisor). |

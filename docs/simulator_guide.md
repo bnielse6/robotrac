@@ -193,7 +193,7 @@ The pattern to look for is one `CMD_START`, then exactly one answer carrying the
 
 ## 7. The automated tests
 
-There are 87 tests in `supervisor/tests/`. They use the same simulator as the dashboard, with no browser. Each one sets up a situation, runs the Supervisor, and checks the result.
+There are 109 tests in `supervisor/tests/`. They use the same simulator as the dashboard, with no browser. Each one sets up a situation, runs the Supervisor, and checks the result.
 
 | File | What it checks |
 |---|---|

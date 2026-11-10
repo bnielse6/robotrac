@@ -92,9 +92,12 @@ The user will measure these and report the values. Fill in the table, then size 
 | Flute pitch `p` (crest to crest) | _not measured_ | |
 | Crest width | _not measured_ | |
 | Flute depth | _not measured_ | |
-| Densdeck thickness | _not measured_ | |
+| Densdeck thickness | 15.9 mm (5/8 in, +/-0.8 mm) | From the DensDeck StormX product page, 2026-11-09 |
+| Insulation layer between deck and densdeck | _unknown_ | The installation guide's cutaway shows one. If present, add its thickness to the standoff. Waiting on the user (Q8) |
+| Densdeck board size | 1219 mm wide by 1219 or 2438 mm long | Tolerances +/-3 mm width, +/-6.4 mm length |
+| Densdeck seams | Butted tightly, edge joints on and parallel to the top flutes, running bond | Installation guide. Long seams lie along the rows. Edge profile not stated |
 | Sensor mounting height above the densdeck | _not measured_ | Planned or achievable, if known |
-| Rows run along or across the flutes | _unknown_ | Check the roof plan (open question 1) |
+| Rows run along or across the flutes | Along (decided, N1) | |
 
 When the values are in: compute the candidate `w`, estimate the blur (standoff versus `p/2`), and optionally write a small simulation sweeping `w/p` to show signal strength and zero-crossing slope.
 

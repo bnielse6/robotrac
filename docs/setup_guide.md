@@ -36,7 +36,7 @@ Not installed: a C++ compiler for the PC (needed for the planned firmware unit t
 2. Open a terminal in the project folder. Check: `python --version`.
 3. For the real serial link: `python -m pip install pyserial`.
 4. For the firmware: `python -m pip install platformio`. Install the VS Code PlatformIO extension if you prefer an IDE.
-5. Run the tests to confirm: in `supervisor`, `python -m unittest discover -s tests -t .` (expect 87 tests, OK).
+5. Run the tests to confirm: in `supervisor`, `python -m unittest discover -s tests -t .` (expect 109 tests, OK).
 
 The simulator, dashboard and tests need nothing beyond Python.
 
