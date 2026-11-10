@@ -8,7 +8,7 @@
 //   1. Set the pins in include/config.h.
 //   2. Replace each TODO below with the real read or write. Keep every function non-blocking.
 //   3. Test one subsystem at a time, with the other three still working through the Supervisor's
-//      simulator (see docs/firmware_guide.md, "Bringing up real hardware").
+//      simulator (see docs/software/firmware_guide.md, "Bringing up real hardware").
 #include "config.h"
 
 #if !USE_SIM_HAL

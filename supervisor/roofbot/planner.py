@@ -8,8 +8,8 @@ ALONG them, both increasing away from that corner. Heading is in degrees with
 the maths convention: 0 is +x, 90 is +y, 180 is -x, 270 is -y. Rows run along
 the flutes, so a row heading is 90 or 270.
 
-Where the spots come from. The Carlisle MF-27 detail (docs/navigation/
-Fastning Report.pdf) fixes the fastener positions on each 4 x 8 ft board. This
+Where the spots come from. The Carlisle MF-27 detail (docs/planning/navigation/
+../../docs/planning/navigation/Fastning Report.pdf) fixes the fastener positions on each 4 x 8 ft board. This
 module tiles whole boards over the roof and stamps that pattern on each one.
 Cut boards, the running-bond stagger and the other start corners are not
 modelled yet.

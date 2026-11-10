@@ -11,7 +11,7 @@
 #define USE_SIM_HAL 1
 #endif
 
-// ---- link to the Pi (see docs/message_schema.md)
+// ---- link to the Pi (see docs/software/message_schema.md)
 #define PROTOCOL_VERSION 1
 #define SERIAL_BAUD 115200
 #define MAX_LINE_BYTES 512                 // longest line, including the newline

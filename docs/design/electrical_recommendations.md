@@ -82,7 +82,7 @@ Battery (24 V) -> main fuse -> E-stop contactor -> motor, drill and actuator rai
 - **The Pi and ESP32 stay powered after an E-stop.** The alert, the fault log and the stack light (red) keep working.
 - **Motor driver enable pins go through the E-stop circuit too.** A stuck ESP32 pin then cannot keep the wheels powered.
 - **The Pi needs a proper 5 V / 5 A supply.** A weak buck converter is the usual cause of Pi 5 brownouts.
-- **A power loss mid-run** needs a decision (see question 7 in `next_steps.md`). A small UPS or supercapacitor on the logic rail lets the Pi write its fault log and shut down cleanly.
+- **A power loss mid-run** needs a decision (see question 7 in `../project/next_steps.md`). A small UPS or supercapacitor on the logic rail lets the Pi write its fault log and shut down cleanly.
 - **If this robot is ever used near people**, replace the plain contactor with a proper safety relay (Pilz PNOZ type). For the capstone prototype a contactor is acceptable, but state that in the report.
 
 ## 4. Drivers and actuators
@@ -133,4 +133,4 @@ Battery (24 V) -> main fuse -> E-stop contactor -> motor, drill and actuator rai
 5. Whether you want physical START and RESOLVED buttons on the robot.
 6. Whether a contactor is acceptable, or a safety relay is required (depends on your supervisor and the course safety rules).
 
-With answers to 1 to 4, the next step is a pin map in `config.h`, a parts list, and a wiring and power diagram. That is step A3 in `next_steps.md`.
+With answers to 1 to 4, the next step is a pin map in `config.h`, a parts list, and a wiring and power diagram. That is step A3 in `../project/next_steps.md`.

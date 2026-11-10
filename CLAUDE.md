@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Control system for a roofing robot (MSE 4499 capstone). A Raspberry Pi 5 runs a Supervisor state machine, vision and an operator UI. An ESP32 runs four subsystems (Locomotion, Plate, Screw, Fastening) over USB serial. No git repo. Windows, PowerShell/Git Bash. `README.md` is the index to all docs, and `docs/next_steps.md` has status, the decision log and open questions.
+Control system for a roofing robot (MSE 4499 capstone). A Raspberry Pi 5 runs a Supervisor state machine, vision and an operator UI. An ESP32 runs four subsystems (Locomotion, Plate, Screw, Fastening) over USB serial. No git repo. Windows, PowerShell/Git Bash. `README.md` is the top-level index and `docs/README.md` indexes the docs, which are grouped into `docs/design/`, `docs/software/`, `docs/project/` and `docs/planning/`, and `docs/project/next_steps.md` has status, the decision log and open questions.
 
 ## Commands
 
@@ -56,4 +56,4 @@ There is no linter configured. There are no firmware tests. A first PlatformIO b
 
 ## Documentation
 
-The owner asked that all code be documented. When changing behavior, update the matching doc: messages in `docs/message_schema.md`, Python in `docs/supervisor_code_guide.md`, simulator and dashboard in `docs/simulator_guide.md`, firmware in `docs/firmware_guide.md`, and status or decisions in `docs/next_steps.md`. Keep test counts and status tables in `README.md` accurate. `docs/complete_system_guide.md` is the source of truth for intended robot behavior (error rules E1 to E10, subsystem flows), and `docs/message_schema.md` lists every deliberate departure from it.
+The owner asked that all code be documented. When changing behavior, update the matching doc: messages in `docs/software/message_schema.md`, Python in `docs/software/supervisor_code_guide.md`, simulator and dashboard in `docs/software/simulator_guide.md`, firmware in `docs/software/firmware_guide.md`, and status or decisions in `docs/project/next_steps.md`. Keep test counts and status tables in `README.md` accurate. `docs/design/complete_system_guide.md` is the source of truth for intended robot behavior (error rules E1 to E10, subsystem flows), and `docs/software/message_schema.md` lists every deliberate departure from it.

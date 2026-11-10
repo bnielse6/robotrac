@@ -1,6 +1,6 @@
 // Base class for Locomotion, Plate, Screw and Fastening.
 //
-// The rules every subsystem follows (docs/message_schema.md, "Rules both sides follow"):
+// The rules every subsystem follows (docs/software/message_schema.md, "Rules both sides follow"):
 //   - exactly one reply per command: DONE, FAULT or NEED_REFILL, carrying the command's id as `ref`
 //   - back in a safe state BEFORE the reply is sent
 //   - abort stops safely and sends no reply

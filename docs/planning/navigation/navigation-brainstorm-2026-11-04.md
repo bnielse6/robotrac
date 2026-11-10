@@ -1,6 +1,6 @@
 # Navigation brainstorm
 
-Notes from a brainstorm on 2026-11-04, following `navigation-notes.md`. This is the record of the discussion. Decisions made since are in sections 6 to 10 and in `navigation-plan-2026-11-04.md`, and the long-term design is in `../design_concept.md`. No code or other docs were changed. The terms "beam" and `OFF_BEAM` elsewhere in the docs come from an earlier joist assumption and have not been updated (see the open questions).
+Notes from a brainstorm on 2026-11-04, following `navigation-notes.md`. This is the record of the discussion. Decisions made since are in sections 6 to 10 and in `navigation-plan-2026-11-04.md`, and the long-term design is in `../../design/design_concept.md`. No code or other docs were changed. The terms "beam" and `OFF_BEAM` elsewhere in the docs come from an earlier joist assumption and have not been updated (see the open questions).
 
 ## 1. Facts established
 
@@ -58,7 +58,7 @@ Notes from a brainstorm on 2026-11-04, following `navigation-notes.md`. This is 
 
 1. **Bench experiment.** Corrugated deck with densdeck on top. Move a candidate sensor or small ring across it and log the readings. Check whether crests are visible through the densdeck and what the ripple looks like. Claude can write the logging and plotting script once a sensor is picked.
 2. **Waypoint generator** and a **localization model in the simulator** with injectable drift, flute-count fixes and lateral sensor fixes. This shows how good the sensing must be before parts are bought.
-3. **Update the docs and terminology** once questions 1 and 2 are answered, keeping `complete_system_guide.md`, `message_schema.md`, the simulator (`detail.py`) and the firmware in step.
+3. **Update the docs and terminology** once questions 1 and 2 are answered, keeping `../../design/complete_system_guide.md`, `../../software/message_schema.md`, the simulator (`detail.py`) and the firmware in step.
 
 ## 6. Diamond sensor array (idea added 2026-11-04)
 
@@ -104,7 +104,7 @@ When the values are in: compute the candidate `w`, estimate the blur (standoff v
 ## 8. Decisions from the user (2026-11-04)
 
 - **Rows run along the flutes.** The robot follows one flute up or down the roof (lawnmower pattern) and crosses flutes only when it changes rows. Cross-track control is the main job while driving a row. At a row change, counting the crests passed is a ruler for the sideways move.
-- **"Beam" means the flute being screwed into.** The joist meaning in the old docs is gone. Terms such as `OFF_BEAM` and "beam sensors" should be renamed (for example to flute) once the design settles. Not done yet, and it must stay in step across `complete_system_guide.md`, `message_schema.md`, `detail.py` and the firmware.
+- **"Beam" means the flute being screwed into.** The joist meaning in the old docs is gone. Terms such as `OFF_BEAM` and "beam sensors" should be renamed (for example to flute) once the design settles. Not done yet, and it must stay in step across `../../design/complete_system_guide.md`, `../../software/message_schema.md`, `detail.py` and the firmware.
 - **The target is the crest, not the valley.** The sensor must report where the crest is, and the robot steers to keep the screw line on it. Crests are closer to the sensor than valleys, so the signal should peak over a crest.
 - **Lateral tolerance: +/-0.5 mm (subject to change).** This is the allowed error between the screw line and the crest center.
 

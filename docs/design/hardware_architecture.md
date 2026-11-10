@@ -48,7 +48,7 @@ For power, drivers, noise handling and the stack light, see the recommendation i
 
 - Motor drivers, drill and torque sensing hardware, camera model and light.
 - The stack light: which unit, its supply voltage (24 V is common), and the driver for each lamp (relay or MOSFET from an ESP32 pin). Three ESP32 outputs are reserved in `config.h` (`PIN_LIGHT_RED`, `PIN_LIGHT_AMBER`, `PIN_LIGHT_GREEN`). Mount it where it can be seen from anywhere on the roof, and not hidden by the camera enclosure.
-- Review the message schema (`message_schema.md`) and the Supervisor code (`../supervisor/`, tested in simulation only).
-- ESP32 firmware: **skeleton written** with the Arduino framework, PlatformIO and ArduinoJson (`../firmware/esp32/`, see `firmware_guide.md`). Compiles, not yet run on a board. Still to do: the pin map and the real hardware layer.
+- Review the message schema (`../software/message_schema.md`) and the Supervisor code (`../supervisor/`, tested in simulation only).
+- ESP32 firmware: **skeleton written** with the Arduino framework, PlatformIO and ArduinoJson (`../firmware/esp32/`, see `../software/firmware_guide.md`). Compiles, not yet run on a board. Still to do: the pin map and the real hardware layer.
 - The camera: which camera and light, where the vision code runs on the Pi, and how it feeds `CameraService` and the camera heartbeat.
-- How the camera questions cross the USB link. Decided: `QUERY` and `ANSWER` messages through the Pi (see `message_schema.md`).
+- How the camera questions cross the USB link. Decided: `QUERY` and `ANSWER` messages through the Pi (see `../software/message_schema.md`).

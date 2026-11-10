@@ -1,6 +1,6 @@
 # ESP32 Firmware Guide
 
-The firmware that runs the four subsystems (Locomotion, Plate, Screw, Fastening) on the ESP32. The code is in `../firmware/esp32/`. The messages it speaks are defined in `message_schema.md`, and the logic it follows is the S1 to S5 flowcharts in `complete_system_guide.md`.
+The firmware that runs the four subsystems (Locomotion, Plate, Screw, Fastening) on the ESP32. The code is in `../firmware/esp32/`. The messages it speaks are defined in `message_schema.md`, and the logic it follows is the S1 to S5 flowcharts in `../design/complete_system_guide.md`.
 
 > **Status: compiles, not yet run on a board.** Both environments build with no warnings (PlatformIO 6.2.0, ESP32 Arduino core, ArduinoJson 7). Using about 26% of flash and 7% of RAM. Nothing has been run on a real ESP32 yet, so the behavior described here is what the code is written to do, not something that has been seen working. Work through the stages in section 8.
 

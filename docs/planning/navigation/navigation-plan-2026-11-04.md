@@ -1,6 +1,6 @@
 # Navigation plan
 
-Written 2026-11-04 from `navigation-brainstorm-2026-11-04.md`. This is the working document: what we concluded, what we are doing about it, and what comes next. The brainstorm stays as the record of how we got here. Decisions that affect the whole robot are copied into `../design_concept.md`, which is the long-term reference.
+Written 2026-11-04 from `navigation-brainstorm-2026-11-04.md`. This is the working document: what we concluded, what we are doing about it, and what comes next. The brainstorm stays as the record of how we got here. Decisions that affect the whole robot are copied into `../../design/design_concept.md`, which is the long-term reference.
 
 **Update 2026-11-10.** Step 5 (waypoint generator), Step 6 (localization model, `roofbot/localization.py`), Step 7 (the beam rename: `OFF_BEAM` is now `OFF_CREST`) and the control-path part of Step 8 are done. Q6 is answered: the crest array error stays inside Locomotion on the ESP32 (design decision D22). Q7 is still open; the model shows along-row errors add up between spots. The bench test (Steps 1 to 4) is still to do, and every sensor number in the model is a placeholder until then. This document still uses the old word beam in places; it is kept as the record.
 
@@ -55,13 +55,13 @@ Two jobs, two signals:
 
 **Step 3: run the bench test (user, with Claude writing the logging script).** Follow brainstorm section 10. Bring back the numbers for each sensor, standoff and `w`.
 
-**Step 4: choose the sensor and size the diamond (Claude and user).** From the results, pick the sensor, the standoff and `w`. Then update `../design_concept.md` and mark N8 to N10 as decided or changed.
+**Step 4: choose the sensor and size the diamond (Claude and user).** From the results, pick the sensor, the standoff and `w`. Then update `../../design/design_concept.md` and mark N8 to N10 as decided or changed.
 
 **Step 5: waypoint generator (Claude).** Pure Python beside the Supervisor, with unit tests. Handle non-rectangular outlines, edge setbacks, row starts and ends, and the serpentine turn sequence.
 
 **Step 6: localization model in the simulator (Claude).** Add injectable drift, crest-count fixes and lateral sensor fixes with the measured noise. This shows whether +/-0.5 mm is achievable before the mechanical design is frozen. Optionally a small `w/p` sweep to confirm the sizing rule.
 
-**Step 7: rename the beam terms (Claude).** Change `OFF_BEAM`, "beam sensors" and the route map wording to flute-based terms. This must stay in step across `complete_system_guide.md`, `message_schema.md`, `supervisor_code_guide.md`, `detail.py`, the tests and the firmware. See `CLAUDE.md`.
+**Step 7: rename the beam terms (Claude).** Change `OFF_BEAM`, "beam sensors" and the route map wording to flute-based terms. This must stay in step across `../../design/complete_system_guide.md`, `../../software/message_schema.md`, `../../software/supervisor_code_guide.md`, `detail.py`, the tests and the firmware. See `CLAUDE.md`.
 
 **Step 8: hardware path (later).** Turn the chosen sensor into a firmware reading through `hal.h` and `hal_esp32.cpp`, and decide how the cross-track error reaches the Locomotion subsystem.
 

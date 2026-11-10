@@ -10,7 +10,7 @@ How to read it: every decision has an ID, a date, a status and a reason. **Decid
 
 A robot that drives over a flat roof and fastens roofing plates down with screws, working in a lawnmower pattern. Control system for the MSE 4499 capstone. A Raspberry Pi 5 runs the Supervisor state machine, vision and the operator UI. An ESP32 runs four subsystems (Locomotion, Plate, Screw, Fastening) over USB serial.
 
-Detailed behavior is in `complete_system_guide.md`. The hardware split is in `hardware_architecture.md`. The messages are in `message_schema.md`.
+Detailed behavior is in `complete_system_guide.md`. The hardware split is in `hardware_architecture.md`. The messages are in `../software/message_schema.md`.
 
 ## 2. Operating environment
 
@@ -43,11 +43,11 @@ All other timeouts, tolerances and speeds in the code are placeholders.
 - **The ESP32 firmware** is a set of non-blocking state machines with a heartbeat watchdog. All hardware goes through `hal.h`.
 - **Simulator** has a fast stub fidelity for tests and a detailed per-flowchart fidelity for the dashboard.
 
-Details: `supervisor_code_guide.md`, `firmware_guide.md`, `simulator_guide.md`.
+Details: `../software/supervisor_code_guide.md`, `../software/firmware_guide.md`, `../software/simulator_guide.md`.
 
 ## 5. Navigation and sensing concept
 
-Working detail is in `navigation/navigation-plan-2026-11-04.md`. Reasoning is in `navigation/navigation-brainstorm-2026-11-04.md`.
+Working detail is in `../planning/navigation/navigation-plan-2026-11-04.md`. Reasoning is in `../planning/navigation/navigation-brainstorm-2026-11-04.md`.
 
 **Concept.** The robot follows a planned line by dead reckoning (wheel encoders plus IMU heading) and corrects sideways from a small sensor array under the robot that reads the steel deck through the densdeck. The crest is where the sensor signal is strongest and where a differential pair crosses zero. Crossing crests at a row change gives a ruler for the sideways move.
 
@@ -88,7 +88,7 @@ Working detail is in `navigation/navigation-plan-2026-11-04.md`. Reasoning is in
 | D11 | 2026-11-04 | Operator-placed corner is a coarse prior. First crest detection snaps the lateral position. | A small placement error would otherwise repeat on every row | Proposed |
 | D12 | 2026-11-04 | Encoders and the layout choose the crest. The array only holds the lock. | All crests look alike | Proposed |
 | D13 | 2026-11-04 | A waypoint generator outputs `(row, spot, x, y, heading)` | The route map is hand-programmed today | Proposed |
-| D14 | 2026-11-09 | Spots come from the Carlisle MF-27 board pattern stamped on a grid of 4x8 ft boards, not from a uniform spacing. The pattern variant (5 or 8 fasteners per 4x8 board) is a roof-dependent parameter. | The spec fixes fastener positions per board. See `navigation/Fastning Report.pdf` | Decided |
+| D14 | 2026-11-09 | Spots come from the Carlisle MF-27 board pattern stamped on a grid of 4x8 ft boards, not from a uniform spacing. The pattern variant (5 or 8 fasteners per 4x8 board) is a roof-dependent parameter. | The spec fixes fastener positions per board. See `../planning/navigation/Fastning Report.pdf` | Decided |
 | D15 | 2026-11-09 | The 8 ft board edges run along the flutes, so rows run along the board length. | User, 2026-11-09 | Decided |
 | D16 | 2026-11-09 | Each spot is snapped to the nearest crest and its offset is reported. | Spot positions in inches may not land on crests, depending on flute pitch | Proposed, needs flute pitch |
 | D17 | 2026-11-09 | Plan for two ESP32 nodes: Locomotion (motors, encoders, IMU, sensor array) and Tool (Plate, Screw, Fastening). Bench work stays on one board. Transport between nodes is open, leaning CAN with a gateway. | Pin count is about 30 and growing, subsystems are spread out, the drill is a noise source. See `pin_map.md` | Proposed direction, transport undecided |
@@ -103,11 +103,11 @@ Working detail is in `navigation/navigation-plan-2026-11-04.md`. Reasoning is in
 | D26 | 2026-11-10 | Every strip is driven forwards and covers the same stretch: after its last screw it runs on to the level of the next strip's first screw and turns there (`turn_style` run-out, the default). Turning at the last screw and reversing stays as an option. | User, 2026-11-10: strips should have a consistent length and the robot only stops at the screws | Decided. Replaces the reversing plan for the 5-screw pattern |
 | D27 | 2026-11-10 | Fine positioning: after stopping at a spot, Locomotion averages several crest array readings and, if the sideways error is outside a small accept limit, nudges sideways by it and reads again (up to 3 times, then `NOT_ALIGNED`). The localization model shows this brings spots straight after a turn inside the +/-0.5 mm tolerance, at a few seconds per run. | The steering loop cannot settle in the zero-length drives that follow a turn | Done in the firmware logic, the simulator and the model. The real nudge (hal_esp32) is still a TODO and its accuracy is a placeholder |
 
-Earlier decisions made before this document (Pi 5 plus ESP32, USB serial, hardware E-stop, retries counted by the Supervisor, and others) are in `next_steps.md` section 2 and `hardware_architecture.md`.
+Earlier decisions made before this document (Pi 5 plus ESP32, USB serial, hardware E-stop, retries counted by the Supervisor, and others) are in `../project/next_steps.md` section 2 and `hardware_architecture.md`.
 
 ## 7. Open items
 
-See `navigation/navigation-plan-2026-11-04.md` section 6 for the full list. The ones that change the design most: the deck measurements, the bench test result, and whether +/-0.5 mm is achievable.
+See `../planning/navigation/navigation-plan-2026-11-04.md` section 6 for the full list. The ones that change the design most: the deck measurements, the bench test result, and whether +/-0.5 mm is achievable.
 
 ## 8. Known risks
 

@@ -1,6 +1,6 @@
 # Pin map (draft)
 
-Drafted 2026-11-09 from `firmware/esp32/src/hal.h` and `firmware/esp32/include/config.h`. This is a planning table, not a wiring diagram. Nothing here has been wired or tested. Its purpose is to answer three questions in one place: how many pins the robot needs, where each signal physically is, and how noise-sensitive it is. Those decide whether one ESP32 is enough (`next_steps.md` question 10, `electrical_recommendations.md`).
+Drafted 2026-11-09 from `firmware/esp32/src/hal.h` and `firmware/esp32/include/config.h`. This is a planning table, not a wiring diagram. Nothing here has been wired or tested. Its purpose is to answer three questions in one place: how many pins the robot needs, where each signal physically is, and how noise-sensitive it is. Those decide whether one ESP32 is enough (`../project/next_steps.md` question 10, `electrical_recommendations.md`).
 
 How to use it: fill in the **Location** column (where on the chassis the sensor or actuator is) and check the **Noise** column against bench results. Then copy the pin numbers into `config.h`.
 

@@ -1,6 +1,6 @@
 # Brainstorm, 2026-11-09
 
-Everything discussed in the 2026-11-09 session: the path planner, the roof deck and fastening pattern, the visualization, how the Supervisor fits in, and the hardware split. It continues `navigation/navigation-brainstorm-2026-11-04.md` and `navigation/navigation-plan-2026-11-04.md`. Decisions are in `design_concept.md` (D14 to D18). Status words: **Decided** (the user chose it), **Proposed** (Claude's recommendation), **Open**, **Done**.
+Everything discussed in the 2026-11-09 session: the path planner, the roof deck and fastening pattern, the visualization, how the Supervisor fits in, and the hardware split. It continues `navigation/navigation-brainstorm-2026-11-04.md` and `navigation/navigation-plan-2026-11-04.md`. Decisions are in `../design/design_concept.md` (D14 to D18). Status words: **Decided** (the user chose it), **Proposed** (Claude's recommendation), **Open**, **Done**.
 
 ## 1. Path planner
 
@@ -45,15 +45,15 @@ Proposed: generate an SVG from the planner output so the path looks like the roo
 
 **How it communicates.** Every message is one JSON line of at most 512 bytes. The Supervisor sends `CMD_START` to one subsystem at a time and gets exactly one `DONE`, `FAULT` or `NEED_REFILL` back, matched by `id` and sender. One-way `LIGHT` messages set the stack light. Heartbeats run both ways, with a 2 s watchdog on the ESP32. The camera is on the Pi, and ESP32 subsystems ask it with `QUERY` and get `ANSWER`, which the Supervisor never sees.
 
-**Links.** Supervisor to ESP32 is **USB serial**, not Wi-Fi. Inside the Pi everything is in-process. Correction to something said in the session: `next_steps.md` item 8 says a tablet over the Pi's Wi-Fi is assumed for the operator screen, so Wi-Fi is planned for the operator link only, and its safety up on the roof is still an open question.
+**Links.** Supervisor to ESP32 is **USB serial**, not Wi-Fi. Inside the Pi everything is in-process. Correction to something said in the session: `../project/next_steps.md` item 8 says a tablet over the Pi's Wi-Fi is assumed for the operator screen, so Wi-Fi is planned for the operator link only, and its safety up on the roof is still an open question.
 
 ## 5. Hardware: how many ESP32s
 
-**Facts from the docs.** There is one ESP32 running all four subsystems today. `hardware_architecture.md` said to start with one and split later if needed, `electrical_recommendations.md` said one ESP32-S3 is enough and suggested a two-way split if needed (one for Locomotion, one for Plate, Screw and Fastening), and `next_steps.md` question 10 left it open. The user remembered four separate boards, which the docs never planned.
+**Facts from the docs.** There is one ESP32 running all four subsystems today. `../design/hardware_architecture.md` said to start with one and split later if needed, `../design/electrical_recommendations.md` said one ESP32-S3 is enough and suggested a two-way split if needed (one for Locomotion, one for Plate, Screw and Fastening), and `../project/next_steps.md` question 10 left it open. The user remembered four separate boards, which the docs never planned.
 
 **Processing is not the limit.** Only one subsystem works at a time, the firmware is non-blocking state machines, and encoder counting is done in hardware on the ESP32. Pin count and noise are the limits.
 
-**Pin map** (`pin_map.md`, draft): about 30 GPIO plus a shared I2C bus, and `config.h` has only 19 pin defines. Missing: a second encoder, motor direction pins, actuators for `clearPlate`, `clearScrew` and `drillRetract`, and E-stop sense. Mismatch to settle (P1): the docs say ESP32-S3 but `platformio.ini` builds `esp32dev`, the classic ESP32, which has far fewer usable pins.
+**Pin map** (`../design/pin_map.md`, draft): about 30 GPIO plus a shared I2C bus, and `config.h` has only 19 pin defines. Missing: a second encoder, motor direction pins, actuators for `clearPlate`, `clearScrew` and `drillRetract`, and E-stop sense. Mismatch to settle (P1): the docs say ESP32-S3 but `platformio.ini` builds `esp32dev`, the classic ESP32, which has far fewer usable pins.
 
 **Direction (Proposed, D17).** Two nodes: Locomotion (motors, encoders, IMU, sensor array, the noise-critical signals) and Tool (Plate, Screw, Fastening, one assembly at the drill). Bench work stays on one board. Four boards would add wiring and failure points without a shown need. Transport between nodes is undecided:
 - **CAN with a gateway ESP32.** The Pi stays on USB serial and the Supervisor is untouched. The ESP32 has a built-in CAN controller. The catch is that classic CAN frames carry 8 bytes, so the 512-byte JSON would need fragmenting or a compact binary format on the CAN side. The Pi 5 has no built-in CAN, which is why the gateway is attractive.
@@ -70,7 +70,7 @@ Proposed: generate an SVG from the planner output so the path looks like the roo
 |---|---|---|
 | Q8 | Is there an insulation layer, and how thick? | User, will check |
 | Q10 | Flute pitch, crest width, flute depth | User, measuring |
-| P1 to P5 | Board choice, motor driver, sensor read method, torque method, locations (`pin_map.md`) | User and bench |
+| P1 to P5 | Board choice, motor driver, sensor read method, torque method, locations (`../design/pin_map.md`) | User and bench |
 | Transport | CAN with gateway or RS-485, after cable lengths and bench noise are known | Bench and chassis layout |
 | Cut boards | Pattern for cut boards at the roof edges is not on the MF-27 sheet | User or the Carlisle spec |
 | Adapter | `Layout` to `Route` | Claude |
@@ -82,8 +82,8 @@ Proposed: generate an SVG from the planner output so the path looks like the roo
 **Done later the same day:** the SVG preview (`roofbot/planner_svg.py`, `plan_preview.py`, 109 tests pass). Try it with `python plan_preview.py --variant eight --pitch 152.4 -o roof.svg` from `supervisor/`. By default a crest is placed under the board edges.
 
 **To pick up next (in order):**
-1. Claude: the `Layout` to `Route` adapter, so the Supervisor and the simulator can run a planned layout. Spot spacing is uneven, so either extend `RowPlan` to take a list of distances or build the adapter around `PlannedRow.distances_mm()`. Add tests, update `supervisor_code_guide.md`, and keep the test counts in `README.md` and `CLAUDE.md` accurate.
-2. User: check for insulation under the densdeck (Q8), measure the flute pitch, crest width and depth (Q10), fill in the Location column of `pin_map.md`.
+1. Claude: the `Layout` to `Route` adapter, so the Supervisor and the simulator can run a planned layout. Spot spacing is uneven, so either extend `RowPlan` to take a list of distances or build the adapter around `PlannedRow.distances_mm()`. Add tests, update `../software/supervisor_code_guide.md`, and keep the test counts in `README.md` and `CLAUDE.md` accurate.
+2. User: check for insulation under the densdeck (Q8), measure the flute pitch, crest width and depth (Q10), fill in the Location column of `../design/pin_map.md`.
 3. Claude: make the firmware split-ready (build environments for the two nodes sharing the protocol code, a heartbeat watchdog per node, check that messages carry enough addressing). Do not write CAN or RS-485 code yet.
 4. Bench test of the sensor, which also shows the motor noise that decides the transport.
 5. Later: cut boards and the running-bond stagger in the planner, other start corners, the `OFF_BEAM` rename, and a dashboard view of the plan (the dashboard's route map has no geometry today).

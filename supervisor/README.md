@@ -1,7 +1,7 @@
 # Supervisor (Raspberry Pi side)
 
 Python code for the roofing robot Supervisor, the message schema, and a simulator.
-The written contract is `../docs/message_schema.md`.
+The written contract is `../docs/software/message_schema.md`.
 
 Needs Python 3.9 or newer. Nothing else for the simulator and tests. `pyserial` is only needed for the real serial link.
 
@@ -47,7 +47,7 @@ From this folder:
 | `robot_main.py` | Runs the real Supervisor against the real ESP32 (`python robot_main.py --port COM5`, not yet tried on hardware) |
 | `tests/` | 80 tests: messages, Supervisor rules, detailed subsystems, dashboard backend, router and camera service |
 
-A tour of all of this is in `../docs/supervisor_code_guide.md`.
+A tour of all of this is in `../docs/software/supervisor_code_guide.md`.
 
 ## Writing a test
 

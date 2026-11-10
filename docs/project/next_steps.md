@@ -21,15 +21,15 @@ Where the project stands, what was decided, what is still open, and what to do n
 
 | Area | State | Evidence |
 |---|---|---|
-| Design: flowcharts, state chart, error handling (E1 to E10) | Done | `complete_system_guide.md`, `diagrams/` (in `docs/`) |
-| Hardware architecture | Decided | `hardware_architecture.md` |
-| Message schema | Drafted, used by both sides | `message_schema.md`, `roofbot/messages.py` |
+| Design: flowcharts, state chart, error handling (E1 to E10) | Done | `../design/complete_system_guide.md`, `../diagrams/` (in `docs/`) |
+| Hardware architecture | Decided | `../design/hardware_architecture.md` |
+| Message schema | Drafted, used by both sides | `../software/message_schema.md`, `roofbot/messages.py` |
 | Supervisor (Python) | Written and tested in simulation | 229 tests pass |
 | Router, camera service | Written and tested | `tests/test_router.py` |
-| Simulator and dashboard | Written, tested, and checked in a headless browser | `simulator_guide.md` |
+| Simulator and dashboard | Written, tested, and checked in a headless browser | `../software/simulator_guide.md` |
 | Detailed subsystem model (S1 to S5) | Written and tested | `roofbot/detail.py`, `tests/test_detail.py` |
-| ESP32 firmware | **Compiles** (simulated and real builds, no warnings). **Never run on a board.** | `firmware_guide.md` |
-| Stack light | `LIGHT` message, Supervisor patterns, simulator lamps and firmware flashing done. Lamp pins (`PIN_LIGHT_*`) unset. | `message_schema.md`, `tests/test_supervisor.py` |
+| ESP32 firmware | **Compiles** (simulated and real builds, no warnings). **Never run on a board.** | `../software/firmware_guide.md` |
+| Stack light | `LIGHT` message, Supervisor patterns, simulator lamps and firmware flashing done. Lamp pins (`PIN_LIGHT_*`) unset. | `../software/message_schema.md`, `tests/test_supervisor.py` |
 | Real hardware layer (`hal_esp32.cpp`) | Empty, every function is a TODO (the stack light output is written but untested) | |
 | Pi serial link, `robot_main.py` | Written, **never tried with hardware** | |
 | Camera and vision | Not started. `CameraService` answers yes to everything. | |
@@ -41,26 +41,26 @@ Where the project stands, what was decided, what is still open, and what to do n
 
 | Date | Decision | Why | Where it is recorded |
 |---|---|---|---|
-| Earlier | One live camera in a lit enclosure checks plate arrival, placement, plate and screw together, and the final photo | Catches jams before fastening, one camera sees both | `complete_system_guide.md` |
+| Earlier | One live camera in a lit enclosure checks plate arrival, placement, plate and screw together, and the final photo | Catches jams before fastening, one camera sees both | `../design/complete_system_guide.md` |
 | Earlier | Retries N = 2, torque limit 10 s, turns alternate right and left | Starting values, to be tuned | Guide, section 9 |
 | Earlier | Subsystems never talk to each other, only to the Supervisor | Simple, testable | Guide, section 4 |
-| 2026-10-30 | Raspberry Pi 5 (8 GB) as Supervisor, vision and operator interface | Needs a real OS for camera, UI and logging | `hardware_architecture.md` |
-| 2026-10-30 | ESP32 for the four subsystems | Real-time I/O, fast boot | `hardware_architecture.md` |
-| 2026-10-30 | USB serial link, one JSON object per line, 512 byte limit | Simple to build and debug | `message_schema.md` |
-| 2026-10-30 | Hardware E-stop that cuts power, not a software message | Must work if software crashes | `hardware_architecture.md` |
-| 2026-10-30 | Arduino framework with PlatformIO and ArduinoJson 7 for the firmware | Fast to build, common | `firmware_guide.md` |
-| 2026-10-30 | Camera questions (`QUERY` and `ANSWER`) travel over the same link and are answered by the Pi | The camera is on the Pi, the subsystems are on the ESP32 | `message_schema.md` |
-| 2026-10-30 | Locomotion faults are retried by the Supervisor too | E8 says "relocate up to N" | `message_schema.md` |
-| 2026-10-30 | `START` is refused without a usable camera feed | Nothing can be verified without it | `message_schema.md` |
-| 2026-10-30 | `SUBSYSTEM_UNRESPONSIVE` is a new fault with no skip | A silent subsystem leaves the robot in an unknown state | `message_schema.md` |
-| 2026-11-03 | A stack light on the robot shows status (green running, flashing amber needs the operator, red E-stop). The Supervisor sets it with a `LIGHT` message, the ESP32 drives the lamps | The operator on the roof may not have the screen in view | `complete_system_guide.md` 3.8, `message_schema.md` |
-| 2026-11-10 | New Locomotion fault `OVERSHOT_SPOT`: after reaching the spot the robot stops its wheels and checks it is not past it by more than `SPOT_OVERSHOOT_MM`. It is never retried (a retry repeats the whole drive from past the spot, so it would go further past; the robot can reverse, so an automatic back-up is a possible later improvement), the operator puts the robot back where the drive started and presses RESOLVED, and there is no skip. Before this the arrival check was one-sided and an overshoot was reported as `DONE`. | Overshooting went unnoticed, and a retry would have made it worse | `message_schema.md`, `firmware_guide.md` |
-| 2026-11-10 | The robot can reverse (DRIVE `distance_mm` is signed). Crest sensor error reaches Locomotion inside the ESP32 (D22). TURN carries the crest count and sideways gap (D25). Roof schematic comes from the team as SVG or DXF, only 4 x 8 ft boards (D23). Beam terms renamed to crest terms (`OFF_BEAM` is now `OFF_CREST`). Localization model written (D24). | Answers to the open questions on the robot, the schematic and the boards | `design_concept.md` D21 to D25 |
-| 2026-11-10 | Strips run on past their last screw to the level of the next strip's first screw and turn there, so every strip covers the same stretch and nothing reverses (D26). The TURN command carries `run_out_mm`. Turning at the last screw and reversing stays as an option. | The user asked for consistent strips that only stop at the screw spots | `design_concept.md` D26, `message_schema.md` |
-| 2026-11-10 | Fine positioning at each spot: average several crest array readings, nudge sideways by the error if it is outside the accept limit, read again, up to 3 times, then the new Locomotion fault `NOT_ALIGNED` (retried, then the operator, no skip). The `DONE` reports the final `lateral_mm`. | A spot straight after a turn keeps the turn's sideways error (the loop needs a few hundred mm to settle) | `design_concept.md` D27, `message_schema.md` |
-| 2026-10-30 | Fastening never replies until the drill is confirmed retracted | Safety | `firmware_guide.md` |
+| 2026-10-30 | Raspberry Pi 5 (8 GB) as Supervisor, vision and operator interface | Needs a real OS for camera, UI and logging | `../design/hardware_architecture.md` |
+| 2026-10-30 | ESP32 for the four subsystems | Real-time I/O, fast boot | `../design/hardware_architecture.md` |
+| 2026-10-30 | USB serial link, one JSON object per line, 512 byte limit | Simple to build and debug | `../software/message_schema.md` |
+| 2026-10-30 | Hardware E-stop that cuts power, not a software message | Must work if software crashes | `../design/hardware_architecture.md` |
+| 2026-10-30 | Arduino framework with PlatformIO and ArduinoJson 7 for the firmware | Fast to build, common | `../software/firmware_guide.md` |
+| 2026-10-30 | Camera questions (`QUERY` and `ANSWER`) travel over the same link and are answered by the Pi | The camera is on the Pi, the subsystems are on the ESP32 | `../software/message_schema.md` |
+| 2026-10-30 | Locomotion faults are retried by the Supervisor too | E8 says "relocate up to N" | `../software/message_schema.md` |
+| 2026-10-30 | `START` is refused without a usable camera feed | Nothing can be verified without it | `../software/message_schema.md` |
+| 2026-10-30 | `SUBSYSTEM_UNRESPONSIVE` is a new fault with no skip | A silent subsystem leaves the robot in an unknown state | `../software/message_schema.md` |
+| 2026-11-03 | A stack light on the robot shows status (green running, flashing amber needs the operator, red E-stop). The Supervisor sets it with a `LIGHT` message, the ESP32 drives the lamps | The operator on the roof may not have the screen in view | `../design/complete_system_guide.md` 3.8, `../software/message_schema.md` |
+| 2026-11-10 | New Locomotion fault `OVERSHOT_SPOT`: after reaching the spot the robot stops its wheels and checks it is not past it by more than `SPOT_OVERSHOOT_MM`. It is never retried (a retry repeats the whole drive from past the spot, so it would go further past; the robot can reverse, so an automatic back-up is a possible later improvement), the operator puts the robot back where the drive started and presses RESOLVED, and there is no skip. Before this the arrival check was one-sided and an overshoot was reported as `DONE`. | Overshooting went unnoticed, and a retry would have made it worse | `../software/message_schema.md`, `../software/firmware_guide.md` |
+| 2026-11-10 | The robot can reverse (DRIVE `distance_mm` is signed). Crest sensor error reaches Locomotion inside the ESP32 (D22). TURN carries the crest count and sideways gap (D25). Roof schematic comes from the team as SVG or DXF, only 4 x 8 ft boards (D23). Beam terms renamed to crest terms (`OFF_BEAM` is now `OFF_CREST`). Localization model written (D24). | Answers to the open questions on the robot, the schematic and the boards | `../design/design_concept.md` D21 to D25 |
+| 2026-11-10 | Strips run on past their last screw to the level of the next strip's first screw and turn there, so every strip covers the same stretch and nothing reverses (D26). The TURN command carries `run_out_mm`. Turning at the last screw and reversing stays as an option. | The user asked for consistent strips that only stop at the screw spots | `../design/design_concept.md` D26, `../software/message_schema.md` |
+| 2026-11-10 | Fine positioning at each spot: average several crest array readings, nudge sideways by the error if it is outside the accept limit, read again, up to 3 times, then the new Locomotion fault `NOT_ALIGNED` (retried, then the operator, no skip). The `DONE` reports the final `lateral_mm`. | A spot straight after a turn keeps the turn's sideways error (the loop needs a few hundred mm to settle) | `../design/design_concept.md` D27, `../software/message_schema.md` |
+| 2026-10-30 | Fastening never replies until the drill is confirmed retracted | Safety | `../software/firmware_guide.md` |
 
-The "added beyond the guide" decisions in the last rows are listed in `message_schema.md` under "Differences from the system guide". Please confirm you agree with them.
+The "added beyond the guide" decisions in the last rows are listed in `../software/message_schema.md` under "Differences from the system guide". Please confirm you agree with them.
 
 ## 3. Next steps
 
@@ -117,7 +117,7 @@ For each: measure how long things really take, replace the placeholders in `conf
 
 ## 4. Open questions for you
 
-These need your decision. The first four were already open in `complete_system_guide.md`.
+These need your decision. The first four were already open in `../design/complete_system_guide.md`.
 
 1. **Camera latency.** How long do the camera checks take? You said you would find out.
 2. **Light failure.** Is a failed light (image too dark) handled as a camera fault (E9)? It is, for now.
@@ -128,7 +128,7 @@ These need your decision. The first four were already open in `complete_system_g
 7. **After a power loss mid-run**, should the robot start again from the beginning, or can the operator tell it which spot it is at?
 8. **Which device is the operator screen?** A tablet over the Pi's Wi-Fi is assumed. Is that right, and is Wi-Fi safe to depend on up there?
 9. **Which camera, light and enclosure?** And is a Pi camera module enough, or is a USB camera preferred?
-10. **One ESP32 or more?** Direction decided 2026-11-09 (D17 in `design_concept.md`): plan for **two** nodes, a Locomotion node (motors, encoders, IMU, sensor array) and a Tool node (Plate, Screw, Fastening), and run one ESP32 on the bench for now. Reasons: the draft pin map (`pin_map.md`) comes to about 30 GPIO plus I2C and is expected to grow, the subsystems are spread out on the chassis, and the drill is a noise source. **Still open:** the transport between nodes (leaning CAN with a gateway ESP32 so the Pi stays on USB serial, RS-485 as the simpler alternative), the board (classic ESP32 versus ESP32-S3, see `pin_map.md` P1), and the cable lengths and measured noise that will decide it. CAN is back on the table, replacing "no longer planned" in `hardware_architecture.md`.
+10. **One ESP32 or more?** Direction decided 2026-11-09 (D17 in `../design/design_concept.md`): plan for **two** nodes, a Locomotion node (motors, encoders, IMU, sensor array) and a Tool node (Plate, Screw, Fastening), and run one ESP32 on the bench for now. Reasons: the draft pin map (`../design/pin_map.md`) comes to about 30 GPIO plus I2C and is expected to grow, the subsystems are spread out on the chassis, and the drill is a noise source. **Still open:** the transport between nodes (leaning CAN with a gateway ESP32 so the Pi stays on USB serial, RS-485 as the simpler alternative), the board (classic ESP32 versus ESP32-S3, see `../design/pin_map.md` P1), and the cable lengths and measured noise that will decide it. CAN is back on the table, replacing "no longer planned" in `../design/hardware_architecture.md`.
 11. **Is skip allowed after an out-of-supply stop?** The guide says yes (E3 and E5 are in E1 to E7). It is implemented that way.
 12. **Stack light colours.** The colours and patterns are proposed, not confirmed. Do you want a buzzer, or a different pattern for a refill stop? The real lamp voltage and the driver circuit (relays or MOSFETs) are also undecided.
 13. **Can the robot back up?** Answered 2026-11-10: yes. DRIVE `distance_mm` is signed. Since 2026-11-10 the planner no longer needs it by default (strips run on instead, D26). Still open: an automatic back-up after a small overshoot, and the sign of the steering correction while reversing (it holds straight for now).
@@ -145,7 +145,7 @@ These need your decision. The first four were already open in `complete_system_g
 | Real hardware layer empty | The robot cannot move yet | C |
 | Serial link code never tried with hardware | Reconnect behavior is unproven | B4 |
 | All limits are placeholders | Real timing may make faults fire too early or too late | C |
-| The Supervisor's timeouts must stay above the subsystems' longest times | Otherwise a real fault is reported as `SUBSYSTEM_UNRESPONSIVE` | C, and the check in `firmware_guide.md` section 9 |
+| The Supervisor's timeouts must stay above the subsystems' longest times | Otherwise a real fault is reported as `SUBSYSTEM_UNRESPONSIVE` | C, and the check in `../software/firmware_guide.md` section 9 |
 | No acknowledgement of commands | A command lost on the cable is only noticed at the timeout | A6 |
 | No heartbeat from the ESP32 to the Pi | A hung board looks like a slow step until the timeout | A6 |
 | The fault log is only in memory | Lost on a restart | A8 |
@@ -155,7 +155,7 @@ These need your decision. The first four were already open in `complete_system_g
 | The camera is a single point of failure | A dead camera stops the robot (E9) | By design |
 | Heat and power on the roof | A Pi in the sun, a drill on a shared supply | A3, D5 |
 | Wi-Fi to the operator screen | If it drops, the operator cannot press RESOLVED. The robot stays safely stopped. | Question 8 |
-| Three copies of each flowchart (diagrams, `detail.py`, firmware) | They can drift apart | Keep them in step, see `supervisor_code_guide.md` section 7 |
+| Three copies of each flowchart (diagrams, `detail.py`, firmware) | They can drift apart | Keep them in step, see `../software/supervisor_code_guide.md` section 7 |
 
 ## 6. How to pick the work back up
 

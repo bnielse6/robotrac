@@ -2,7 +2,7 @@
 
 Runs the Locomotion, Plate, Screw and Fastening subsystems and talks to the Raspberry Pi over USB serial.
 
-**Compiles (both environments, no warnings). Not yet run on a board.** The full explanation is in `../../docs/firmware_guide.md`.
+**Compiles (both environments, no warnings). Not yet run on a board.** The full explanation is in `../../docs/software/firmware_guide.md`.
 
 ## Build
 

@@ -1,7 +1,7 @@
 """Message schema for the roofing robot.
 
 One JSON object per line over USB serial (and the same objects in the simulator).
-See docs/message_schema.md for the written contract.
+See docs/software/message_schema.md for the written contract.
 """
 from __future__ import annotations
 
