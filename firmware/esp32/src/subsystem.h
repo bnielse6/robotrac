@@ -47,6 +47,7 @@ class Subsystem {
 
   // The three possible answers. Each one makes the subsystem safe, then sends one reply.
   void finishDone();
+  void finishDoneWithError(float lateralMm, float alongMm);  // a DONE that also reports where Locomotion stopped
   void finishFault(const char* code);
   void finishRefill(const char* item);
 

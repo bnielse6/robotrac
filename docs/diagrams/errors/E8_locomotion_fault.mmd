@@ -3,16 +3,17 @@ sequenceDiagram
   actor Op as Operator screen
   participant S as Supervisor
   participant L as Locomotion
-  Note over S,L: Robot is driving along a row,<br/>or turning to the next row.<br/>It must stay on the beam and reach the right spot.
+  Note over S,L: Robot is driving along a row,<br/>or turning to the next row.<br/>It must stay on the crest and reach the right spot.
   S->>L: CMD_START (drive to spot 14 of the row)
-  L-->>S: FAULT (OFF_BEAM, CANNOT_REACH_SPOT or TURN_FAILED), wheels stopped
-  S->>L: CMD_START (retry 1 of 2, relocate to beam)
+  L-->>S: FAULT (OFF_CREST, CANNOT_REACH_SPOT, OVERSHOT_SPOT, NOT_ALIGNED or TURN_FAILED), wheels stopped
+  S->>L: CMD_START (retry 1 of 2, relocate to crest)
   L-->>S: FAULT
-  S->>L: CMD_START (retry 2 of 2, relocate to beam)
+  S->>L: CMD_START (retry 2 of 2, relocate to crest)
   L-->>S: FAULT
   S->>Op: ALERT: robot stopped. Spot 14, Locomotion, fault code
   Note over S: Stack light turns flashing amber, so the operator sees it from across the roof
-  Note over S: Robot waits where it is.<br/>There is no skip, because later spots depend on being on the beam.
-  Op->>S: RESOLVED (robot placed back on beam)
+  Note over S: Robot waits where it is.<br/>There is no skip, because later spots depend on being on the crest.
+  Op->>S: RESOLVED (robot placed back on crest)
   S->>L: CMD_START (resume driving)
   L-->>S: DONE
+  Note over S,L: OVERSHOT_SPOT (robot rolled past the spot) is the exception.<br/>It is never retried, because repeating the drive from past the spot only goes further past.<br/>The Supervisor stops at once, and the operator puts the robot back<br/>where the drive started before pressing RESOLVED.

@@ -21,6 +21,6 @@ The live camera sits in an enclosed space with its own light, so glare and chang
 | E5 | NEED_REFILL (screws) | Screw | Stop immediately and alert (no retry) |
 | E6 | TORQUE_TIMEOUT (10 seconds) | Fastening | Retract drill, retry up to N, then stop and alert |
 | E7 | PHOTO_REJECTED | Fastening | Retake photo up to N, then stop and alert |
-| E8 | OFF_BEAM / CANNOT_REACH_SPOT / TURN_FAILED | Locomotion | Relocate up to N, then stop and alert (no skip) |
+| E8 | OFF_CREST / CANNOT_REACH_SPOT / OVERSHOT_SPOT / NOT_ALIGNED / TURN_FAILED | Locomotion | Relocate up to N, then stop and alert (no skip). OVERSHOT_SPOT is never retried: stop and alert at once |
 | E9 | CAMERA_FEED_LOST (no frames, lens blocked, or image too dark because the light failed) | Camera | Stop current step safely and alert (no retry, no skip) |
 | E10 | ESTOP | Any | ESTOP, manual reset |

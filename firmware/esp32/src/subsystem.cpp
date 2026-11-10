@@ -19,6 +19,13 @@ void Subsystem::finishDone() {
   protocol::sendDone(name_, cmd_);
 }
 
+void Subsystem::finishDoneWithError(float lateralMm, float alongMm) {
+  if (!busy_) return;
+  makeSafe();
+  busy_ = false;
+  protocol::sendDoneWithError(name_, cmd_, lateralMm, alongMm);
+}
+
 void Subsystem::finishFault(const char* code) {
   if (!busy_) return;
   makeSafe();

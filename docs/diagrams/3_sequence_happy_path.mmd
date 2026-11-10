@@ -14,7 +14,7 @@ sequenceDiagram
   Note over S,K: Start at bottom left. The camera sits in an enclosure with its own light, and streams to the operator screen the whole run.
   Note over S,K: Row 1, spot 1 (route map)
   S->>L: CMD_START (drive to spot 1)
-  L-->>S: DONE (on beam, at right spot)
+  L-->>S: DONE (on crest, at right spot)
   S->>P: CMD_START
   P->>K: is the plate in fastening position?
   K-->>P: YES, plate arrived
@@ -35,7 +35,7 @@ sequenceDiagram
   Note over S,K: Spots 2 to n repeat Plate, Screw, Fastening
   Note over S,K: End of row, more rows left
   S->>L: CMD_START (turn right twice)
-  L-->>S: DONE (turned, front sensor on next beam)
+  L-->>S: DONE (turned, front sensor on next crest)
   Note over S,K: Row 2 runs the opposite direction. Its turn at the end will be left twice.
   Note over S,K: After the last spot of the last row the run is complete.
   S-->>Lt: LIGHT: flashing green

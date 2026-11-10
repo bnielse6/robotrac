@@ -53,7 +53,7 @@ One Pi and one ESP32-S3 is enough. Split the ESP32 only if testing shows noise o
 |---|---|
 | Encoders (2 wheels, A and B) | 4 |
 | Drive motor PWM and direction (2 motors) | 4 to 6 |
-| Beam sensors and front sensor | 3 to 5 |
+| Crest sensors and front sensor | 3 to 5 |
 | Plate feed, push, release | 3 |
 | Plate supply sensor, tripwire | 2 |
 | Screw load, screw supply sensor | 2 |
@@ -129,7 +129,7 @@ Battery (24 V) -> main fuse -> E-stop contactor -> motor, drill and actuator rai
 1. The battery or power source and its voltage.
 2. The drive motor type and size.
 3. The plate and screw mechanism types.
-4. What the beam and front sensors physically are.
+4. What the crest and front sensors physically are.
 5. Whether you want physical START and RESOLVED buttons on the robot.
 6. Whether a contactor is acceptable, or a safety relay is required (depends on your supervisor and the course safety rules).
 

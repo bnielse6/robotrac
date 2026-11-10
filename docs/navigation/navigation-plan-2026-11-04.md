@@ -2,6 +2,8 @@
 
 Written 2026-11-04 from `navigation-brainstorm-2026-11-04.md`. This is the working document: what we concluded, what we are doing about it, and what comes next. The brainstorm stays as the record of how we got here. Decisions that affect the whole robot are copied into `../design_concept.md`, which is the long-term reference.
 
+**Update 2026-11-10.** Step 5 (waypoint generator), Step 6 (localization model, `roofbot/localization.py`), Step 7 (the beam rename: `OFF_BEAM` is now `OFF_CREST`) and the control-path part of Step 8 are done. Q6 is answered: the crest array error stays inside Locomotion on the ESP32 (design decision D22). Q7 is still open; the model shows along-row errors add up between spots. The bench test (Steps 1 to 4) is still to do, and every sensor number in the model is a placeholder until then. This document still uses the old word beam in places; it is kept as the record.
+
 Status words used below: **Decided** (the user chose it), **Proposed** (Claude's recommendation, not yet confirmed), **Open** (needs information), **Done**.
 
 ## 1. What we are solving

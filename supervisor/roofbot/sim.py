@@ -20,10 +20,11 @@ class Outcome:
     kind: str  # DONE, FAULT, REFILL, SILENT
     code: Optional[FaultCode] = None
     item: Optional[str] = None
+    params: Optional[dict] = None   # extra fields on a DONE, e.g. lateral_mm and along_mm from Locomotion
 
 
-def done() -> Outcome:
-    return Outcome("DONE")
+def done(**params) -> Outcome:
+    return Outcome("DONE", params=params or None)
 
 
 def fault(code: FaultCode) -> Outcome:
@@ -83,7 +84,7 @@ class StubSubsystem:
         common = dict(src=self.node, dst=Node.SUPERVISOR, ref=cmd.id, row=cmd.row, spot=cmd.spot,
                       attempt=cmd.attempt, step=cmd.step)
         if outcome.kind == "DONE":
-            return Message(MsgType.DONE, **common)
+            return Message(MsgType.DONE, params=dict(outcome.params or {}), **common)
         if outcome.kind == "FAULT":
             return Message(MsgType.FAULT, code=outcome.code, **common)
         return Message(MsgType.NEED_REFILL, params={"item": outcome.item}, **common)

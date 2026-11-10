@@ -173,6 +173,13 @@
   .badge.good { background: var(--green-bg); color: var(--green); }
   .badge.bad { background: var(--red-bg); color: var(--red); }
   .hidden { display: none !important; }
+  .planleft { display: grid; gap: 12px; }
+  .planright { display: grid; gap: 12px; grid-template-columns: 1fr; align-items: start; }
+  .planright.shape { grid-template-columns: minmax(300px, 440px) 1fr; }
+  #sh-canvas { width: 100%; aspect-ratio: 1; display: block; border: 1px solid var(--line); border-radius: 6px; touch-action: none; cursor: crosshair; background: #fff; }
+  .planform { display: grid; gap: 8px; }
+  .planform label { display: grid; gap: 3px; font-size: 12px; color: var(--muted); }
+  .planform input, .planform select { font: inherit; padding: 5px 6px; width: 100%; box-sizing: border-box; }
   #offline { background: var(--red); color: #fff; padding: 6px 16px; text-align: center; }
 </style>
 </head>
@@ -182,6 +189,7 @@
   <h1>Roofbot Simulator</h1>
   <div class="tabs">
     <button id="tab-sim" class="on" onclick="showTab('sim')">Simulator</button>
+    <button id="tab-plan" onclick="showTab('plan')">Roof plan</button>
     <button id="tab-tests" onclick="showTab('tests')">Tests</button>
   </div>
   <div class="grow"></div>
@@ -268,6 +276,110 @@
   <div class="detailgrid" id="detailgrid"></div>
 </div>
 
+<!-- ================= ROOF PLAN ================= -->
+<div id="view-plan" class="layout hidden" style="grid-template-columns: minmax(280px, 340px) 1fr">
+  <div class="planleft">
+    <div class="card">
+      <h2>Roof schematic</h2>
+      <div class="small" style="margin-bottom:8px">Describe the roof, choose the screw pattern, and the planner tiles whole boards inside the shape, places the screws and orders the rows. Nothing runs until you press Run.</div>
+      <div class="planform">
+        <label>Units
+          <select id="pl-unit" onchange="planUnitChanged()">
+            <option value="25.4">inches</option><option value="304.8" selected>feet</option><option value="1">mm</option>
+          </select></label>
+        <label>Roof shape
+          <select id="pl-mode" onchange="setShapeMode()">
+            <option value="rect">Rectangle (type the size)</option>
+            <option value="shape">Draw the shape</option>
+          </select></label>
+        <label>Board and screw pattern
+          <select id="pl-variant" onchange="planPreview()">
+            <option value="demo">Demo: 4 x 8 ft boards, 4 screws</option>
+            <option value="five">Real: 4 x 8 ft, 5 screws (over insulation)</option>
+            <option value="eight">Real: 4 x 8 ft, 8 screws (re-roof)</option>
+          </select></label>
+        <div id="pl-rectfields" style="display:contents">
+          <label>Roof width (across the flutes) <input type="number" id="pl-width" value="4" min="0" step="any" oninput="planPreview()"></label>
+          <label>Roof length (along the flutes) <input type="number" id="pl-length" value="24" min="0" step="any" oninput="planPreview()"></label>
+        </div>
+        <label>How a strip ends
+          <select id="pl-turn" onchange="planPreview()">
+            <option value="run-out">Run on to the next strip's first screw level (no reversing)</option>
+            <option value="last-spot">Turn at the last screw (may reverse)</option>
+          </select></label>
+        <label>Edge setback <input type="number" id="pl-setback" value="0" min="0" step="any" oninput="planPreview()"></label>
+        <label>Flute pitch (optional, blank = none) <input type="number" id="pl-pitch" value="" min="0" step="any" oninput="planPreview()"></label>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn primary" onclick="planRun()">Run this plan in the simulator</button>
+      </div>
+      <div class="small" id="pl-error" style="color:#b91c1c;margin-top:6px"></div>
+      <div class="small" id="pl-summary" style="margin-top:6px"></div>
+      <div class="small" id="pl-warn" style="color:#b45309;margin-top:6px"></div>
+    </div>
+    <div class="card">
+      <h2>Accuracy estimate</h2>
+      <div class="small" style="margin-bottom:6px">How well would the robot stop at each spot of this plan? The numbers below are <b>placeholders</b>: replace them with measured values after the bench test. See <code>roofbot/localization.py</code>.</div>
+      <div class="planform">
+        <label>Crest array noise (mm) <input type="number" id="ac-noise" value="0.15" step="any"></label>
+        <label>Heading drift (deg per root-second) <input type="number" id="ac-drift" value="0.05" step="any"></label>
+        <label>Sideways error after a turn (mm) <input type="number" id="ac-turn" value="5" step="any"></label>
+        <label>Array to drill offset (mm) <input type="number" id="ac-drill" value="0.2" step="any"></label>
+        <label>Lateral tolerance (mm) <input type="number" id="ac-tol" value="0.5" step="any"></label>
+        <label>Fine positioning (nudge at each spot)
+          <select id="ac-fine"><option value="1">on</option><option value="0">off</option></select></label>
+        <label>Accept limit for the nudge (mm) <input type="number" id="ac-accept" value="0.2" step="any"></label>
+        <label>Readings averaged before deciding <input type="number" id="ac-samples" value="8" step="1" min="1"></label>
+      </div>
+      <div class="row" style="margin-top:8px"><button class="btn" onclick="accuracyEstimate()">Estimate</button></div>
+      <div class="small" id="ac-out" style="margin-top:8px;white-space:pre-wrap"></div>
+    </div>
+    <div class="card">
+      <h2>Robot progress</h2>
+      <div class="statusline" id="pl-status">No planned run yet. Press Run.</div>
+      <div class="small" id="pl-accuracy" style="margin-top:6px"></div>
+      <div class="small" style="margin-top:8px">Green = fastened, blue = the robot is here, amber = skipped. The robot starts at the green dot. Use the Simulator tab for the operator buttons (E-stop, resolve, skip).</div>
+    </div>
+  </div>
+  <div class="planright" id="pl-right">
+    <div class="card hidden" id="pl-shapecard">
+      <h2>Draw the roof shape</h2>
+      <div class="small" style="margin-bottom:6px">Click to add a corner. Drag a corner to move it. Double-click a corner to delete it. The last corner joins back to the first. Rows run up the page, along the flutes. Corners snap to the grid.</div>
+      <div class="row" style="margin-bottom:6px">
+        <label class="btn" style="cursor:pointer">Import schematic (SVG or DXF)...
+          <input type="file" id="sc-file" accept=".svg,.dxf,image/svg+xml" style="display:none" onchange="schematicChosen(this)"></label>
+        <select id="sc-units" onchange="schematicReload()" title="What one unit in the file means, when the file does not say">
+          <option value="">units: from the file</option><option value="1">units: mm</option>
+          <option value="25.4">units: inches</option><option value="304.8">units: feet</option>
+        </select>
+        <select id="sc-lines" onchange="schematicReload()" title="How crests are drawn in the file">
+          <option value="centres">one line per crest</option><option value="pairs">two lines per crest (edges)</option>
+        </select>
+        <button class="btn" onclick="schematicRemoveCrests()">Remove crest lines</button>
+      </div>
+      <div class="small" id="sc-status" style="margin-bottom:6px"></div>
+      <svg id="sh-canvas" viewBox="0 0 40 40"></svg>
+      <div class="row" style="margin:8px 0">
+        <select id="sh-preset" onchange="shapePreset(this.value); this.value=''">
+          <option value="">Roof shapes...</option>
+        </select>
+        <button class="btn" onclick="shapeUndo()">Undo corner</button>
+        <button class="btn" onclick="shapeClear()">Clear</button>
+      </div>
+      <div class="row" style="margin-bottom:8px">
+        <label class="small">grid <input type="number" id="sh-grid" value="1" min="0.001" step="any" style="width:70px" oninput="drawShape()"></label>
+        <label class="small">canvas size <input type="number" id="sh-size" value="40" min="1" step="any" style="width:70px" oninput="drawShape()"></label>
+      </div>
+      <label class="small" style="display:grid;gap:3px">Corners (x, y) in the chosen units, one per line. You can type or paste them here.
+        <textarea id="sh-text" rows="6" style="font: 12px ui-monospace, Consolas, monospace; padding: 5px 6px;" oninput="shapeTextChanged()"></textarea></label>
+    </div>
+    <div class="card">
+      <h2>Planned path</h2>
+      <iframe id="pl-frame" title="Roof plan" style="width:100%;height:78vh;border:0;background:#fff;border-radius:6px"></iframe>
+    </div>
+  </div>
+</div>
+
 <!-- ================= TESTS ================= -->
 <div id="view-tests" class="layout hidden" style="grid-template-columns: minmax(300px, 900px)">
   <div class="card">
@@ -305,7 +417,7 @@ $('flow').innerHTML = FLOW.map(([k, label], i) =>
 
 const SUBS = {
   LOCOMOTION: {key: 'locomotion', title: 'Locomotion', steps: ['DRIVE', 'TURN'],
-    outcomes: {DRIVE: ['FAULT:OFF_BEAM', 'FAULT:CANNOT_REACH_SPOT', 'SILENT'], TURN: ['FAULT:TURN_FAILED', 'SILENT']}},
+    outcomes: {DRIVE: ['FAULT:OFF_CREST', 'FAULT:CANNOT_REACH_SPOT', 'FAULT:OVERSHOT_SPOT', 'FAULT:NOT_ALIGNED', 'SILENT'], TURN: ['FAULT:TURN_FAILED', 'SILENT']}},
   PLATE: {key: 'plate', title: 'Plate', steps: ['PLATE'],
     outcomes: {PLATE: ['FAULT:PLATE_NOT_ARRIVED', 'FAULT:PLACEMENT_REJECTED', 'REFILL:PLATES', 'SILENT']}, refill: true},
   SCREW: {key: 'screw', title: 'Screw', steps: ['SCREW'],
@@ -406,6 +518,9 @@ function inject(key) {
 (async function init() {
   const meta = await api('/api/meta');
   FLOWS = Object.fromEntries(Object.entries(meta.flows));
+  SHAPES_FT = meta.shapes || {};
+  $('sh-preset').innerHTML = '<option value="">Roof shapes...</option>' +
+    Object.entries(SHAPES_FT).map(([k, v]) => `<option value="${k}">${esc(v.label)}</option>`).join('');
   $('preset').innerHTML = Object.entries(meta.presets).map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join('');
   $('presetdesc').textContent = 'Pick a scenario and press Load. Most scenarios press START for you. "Empty" lets you do it yourself.';
 })();
@@ -518,7 +633,7 @@ function renderRoof(s) {
 const ICON = {start: '▶', act: '▢', check: '◇', ok: '✓', bad: '✗'};
 const HIDDEN = new Set(['plate_x', 'drill_depth', 'target_mm', 'torque_target_nm', 'limit_s']);
 const METERS = {encoder_mm: 'target_mm', torque_nm: 'torque_target_nm', timer_s: 'limit_s'};
-const LABELS = {beam_sensors: 'beam sensors', front_sensor: 'front sensor', encoder_mm: 'encoder (mm)', heading_deg: 'heading (deg)',
+const LABELS = {lateral_mm: 'sideways error (mm)', crest_sensors: 'crest sensors', front_sensor: 'front sensor', encoder_mm: 'encoder (mm)', heading_deg: 'heading (deg)',
   plates_left: 'plates left', plate_position: 'plate', camera_sees_plate: 'camera sees plate', tripwire: 'tripwire',
   screws_left: 'screws left', screw_position: 'screw', camera_sees_both: 'camera sees both',
   drill: 'drill', torque_nm: 'torque (N·m)', timer_s: 'timer (s)', photo: 'photo', wheels: 'wheels'};
@@ -555,8 +670,8 @@ function fmtSensor(k, v) {
   if (typeof v === 'boolean') return {t: v ? 'yes' : 'no', c: v ? 'good' : ''};
   const text = String(v);
   let c = '';
-  if (/OFF BEAM|nothing|reject|not aligned|jammed|missing/i.test(text)) c = 'bad';
-  else if (/^on beam|detected|accepted|loaded|ON NEXT|at position/i.test(text)) c = 'good';
+  if (/OFF CREST|nothing|reject|not aligned|jammed|missing/i.test(text)) c = 'bad';
+  else if (/^on crest|detected|accepted|loaded|ON NEXT|at position/i.test(text)) c = 'good';
   return {t: typeof v === 'number' ? (Number.isInteger(v) ? v : v.toFixed(2)) : text, c};
 }
 
@@ -693,6 +808,7 @@ async function refresh() {
     const s = await api('/api/state?hb=' + ($('showhb').checked ? 1 : 0));
     $('offline').classList.add('hidden');
     render(s);
+    paintPlan(s);
   } catch (e) {
     $('offline').classList.remove('hidden');
   }
@@ -703,11 +819,283 @@ refresh();
 /* ---------------- tests tab ---------------- */
 function showTab(name) {
   $('view-sim').classList.toggle('hidden', name !== 'sim');
+  $('view-plan').classList.toggle('hidden', name !== 'plan');
   $('view-tests').classList.toggle('hidden', name !== 'tests');
   $('tab-sim').classList.toggle('on', name === 'sim');
+  $('tab-plan').classList.toggle('on', name === 'plan');
   $('tab-tests').classList.toggle('on', name === 'tests');
   if (name === 'tests') pollTests();
+  if (name === 'plan' && !planShownKey) planPreview();
 }
+
+/* ---------------- roof plan tab ---------------- */
+const FIT = '<style>html,body{margin:0;height:100%}svg{width:100%;height:100%;display:block}</style>';
+let planShownKey = '', planTimer = null, lastPlanPaint = '', planSynced = false;
+let shapeMode = false, shapePts = [], shapeDrag = -1;
+let schematicText = '', schematicName = '', schematicCrests = [];   // crest x positions in mm, from an imported file
+const unitMm = () => +$('pl-unit').value;
+
+function planParams() {
+  const u = unitMm(), n = id => $(id).value === '' ? null : +$(id).value * u;
+  const p = {variant: $('pl-variant').value, setback_mm: n('pl-setback') || 0, pitch_mm: n('pl-pitch'),
+             turn_style: $('pl-turn').value};
+  if (shapeMode) {
+    p.outline_mm = shapePts.map(q => [q[0] * u, q[1] * u]);
+    if (schematicCrests.length) p.crest_xs_mm = schematicCrests.slice();
+    const xs = shapePts.map(q => q[0] * u), ys = shapePts.map(q => q[1] * u);
+    p.width_mm = xs.length ? Math.max(...xs) - Math.min(...xs) : 0;
+    p.length_mm = ys.length ? Math.max(...ys) - Math.min(...ys) : 0;
+  } else {
+    p.width_mm = n('pl-width'); p.length_mm = n('pl-length');
+  }
+  return p;
+}
+function planProblem(p) {
+  if (shapeMode) return shapePts.length < 3 ? 'Click on the canvas to add corners. A roof needs at least 3.' : '';
+  return (p.width_mm > 0 && p.length_mm > 0) ? '' : 'Enter a width and a length.';
+}
+function setShapeMode() {
+  shapeMode = $('pl-mode').value === 'shape';
+  $('pl-rectfields').classList.toggle('hidden', shapeMode);
+  $('pl-shapecard').classList.toggle('hidden', !shapeMode);
+  $('pl-right').classList.toggle('shape', shapeMode);
+  if (shapeMode) { shapeSyncText(); drawShape(); }
+  planPreview();
+}
+function planUnitChanged() {
+  // keep the same physical size when the unit changes
+  const from = planUnitChanged.last, to = unitMm(), k = from / to;
+  ['pl-width', 'pl-length', 'pl-setback', 'pl-pitch', 'sh-grid', 'sh-size'].forEach(id => {
+    if ($(id).value !== '') $(id).value = +(($(id).value * k).toFixed(4));
+  });
+  shapePts = shapePts.map(q => [+(q[0] * k).toFixed(4), +(q[1] * k).toFixed(4)]);
+  planUnitChanged.last = to;
+  shapeSyncText(); drawShape(); planPreview();
+}
+planUnitChanged.last = 304.8;
+
+function planPreview() {
+  clearTimeout(planTimer);
+  planTimer = setTimeout(async () => {
+    const p = planParams(), problem = planProblem(p);
+    if (problem) { $('pl-error').textContent = problem; $('pl-summary').textContent = ''; $('pl-warn').textContent = ''; return; }
+    const r = await api('/api/plan/preview', p);
+    if (r.error) { $('pl-error').textContent = r.error; $('pl-summary').textContent = ''; $('pl-warn').textContent = ''; return; }
+    $('pl-error').textContent = '';
+    $('pl-summary').textContent = `${r.spots} spots in ${r.rows} rows on ${r.boards} whole boards.`;
+    $('pl-warn').textContent = r.warnings.join(' ');
+    planShownKey = JSON.stringify(p);
+    $('pl-frame').srcdoc = FIT + r.svg;
+    lastPlanPaint = '';
+  }, 250);
+}
+async function planRun() {
+  const p = planParams(), problem = planProblem(p);
+  if (problem) { $('pl-error').textContent = problem; return; }
+  const r = await api('/api/plan/run', p);
+  if (r.error) { $('pl-error').textContent = r.error; return; }
+  $('pl-error').textContent = '';
+  planSynced = true;
+  lastTraceKey = ''; roofKey = ''; lastPlanPaint = '';
+  planPreview();
+}
+function samePlan(a, b) {
+  const num = (x, y) => (x == null || y == null) ? x === y : Math.abs(x - y) < 1e-3;
+  const pts = o => JSON.stringify((o.outline_mm || []).map(q => q.map(v => Math.round(v * 1000))));
+  const crests = o => JSON.stringify((o.crest_xs_mm || []).map(v => Math.round(v * 1000)));
+  return a && b && a.variant === b.variant && (a.turn_style || 'run-out') === (b.turn_style || 'run-out') && num(a.setback_mm || 0, b.setback_mm || 0) && num(a.pitch_mm, b.pitch_mm) &&
+         pts(a) === pts(b) && crests(a) === crests(b) && (a.outline_mm ? true : num(a.width_mm, b.width_mm) && num(a.length_mm, b.length_mm));
+}
+function loadPlanForm(p) {   // show the plan that is running, e.g. after a page reload
+  $('pl-unit').value = '1'; planUnitChanged.last = 1;
+  $('pl-variant').value = p.variant;
+  $('pl-turn').value = p.turn_style || 'run-out';
+  $('pl-setback').value = p.setback_mm || 0; $('pl-pitch').value = p.pitch_mm == null ? '' : p.pitch_mm;
+  if (p.outline_mm) {
+    $('pl-mode').value = 'shape';
+    shapePts = p.outline_mm.map(q => [q[0], q[1]]);
+    schematicCrests = (p.crest_xs_mm || []).slice();
+    const big = Math.max(...shapePts.flat());
+    $('sh-grid').value = 304.8; $('sh-size').value = Math.ceil(big * 1.15 / 304.8) * 304.8;
+  } else {
+    $('pl-mode').value = 'rect';
+    $('pl-width').value = p.width_mm; $('pl-length').value = p.length_mm;
+  }
+  setShapeMode();
+}
+
+/* ---- accuracy estimate (placeholder numbers) ---- */
+async function accuracyEstimate() {
+  const p = planParams(), problem = planProblem(p);
+  if (problem) { $('ac-out').textContent = problem; return; }
+  p.params = {array_noise_mm: $('ac-noise').value, heading_walk_deg_per_sqrt_s: $('ac-drift').value,
+              start_lateral_sigma_mm: $('ac-turn').value, drill_offset_sigma_mm: $('ac-drill').value,
+              lateral_tolerance_mm: $('ac-tol').value, fine_positioning: $('ac-fine').value,
+              align_accept_mm: $('ac-accept').value, align_samples: $('ac-samples').value};
+  $('ac-out').textContent = 'Working...';
+  const r = await api('/api/plan/accuracy', p);
+  if (r.error) { $('ac-out').textContent = r.error; return; }
+  const pct = x => (100 * x).toFixed(0) + '%', mm = x => x.toFixed(2) + ' mm', a = r.along;
+  $('ac-out').textContent =
+    `Sideways (across the flutes), target +/-${r.tolerance_mm} mm\n` +
+    `  ${pct(r.fraction_meeting_lateral)} of ${r.spots} spots meet it (need ${pct(r.required_fraction)}): ${r.achievable ? 'ACHIEVABLE' : 'NOT achievable'}\n` +
+    `  worst: row ${r.worst.row} spot ${r.worst.spot}, spread ${mm(r.worst.sigma_mm)} (95% inside ${mm(r.worst.p95_mm)})\n` +
+    `  biggest term: ${r.dominant}\n` +
+    (r.fine_positioning ? `  fine positioning: about ${r.expected_nudges.toFixed(1)} nudges over the run (+${Math.round(r.nudge_time_s)} s), worst chance of NOT_ALIGNED ${(100 * r.worst_p_not_aligned).toFixed(2)}%\n`
+                        : `  fine positioning is off\n`) +
+    `  the loop settles to ${mm(r.steady_state_mm)} after ${Math.round(r.settle_distance_mm)} mm of driving\n` +
+    `Along the row, target +/-${a.tolerance_mm} mm\n` +
+    `  as built (each stop carried into the next): ${pct(a.as_built.fraction)} meet it, worst ${a.as_built.worst_mean_mm.toFixed(0)} mm +/-${a.as_built.worst_sigma_mm.toFixed(0)}\n` +
+    `  if the firmware takes off the last overshoot: ${pct(a.carried.fraction)} meet it, worst ${a.carried.worst_mean_mm.toFixed(0)} mm +/-${a.carried.worst_sigma_mm.toFixed(0)}\n` +
+    `Row changes: worst chance of miscounting a crest ${(100 * r.worst_turn_miscount).toFixed(2)}% (the encoder check turns it into a failed turn)` +
+    (r.notes.length ? '\n\n' + r.notes.join('\n') : '');
+}
+
+/* ---- the shape editor ---- */
+let SHAPES_FT = {};   // filled from /api/meta: the shape library in roofbot/shapes.py
+function shapePreset(name) {
+  if (!name) return;
+  const k = 304.8 / unitMm();
+  schematicCrests = []; schematicStatus('');
+  shapePts = SHAPES_FT[name].points_ft.map(q => [+(q[0] * k).toFixed(4), +(q[1] * k).toFixed(4)]);
+  const big = Math.max(...shapePts.flat()), g = +$('sh-grid').value || 1;
+  $('sh-size').value = Math.max(+$('sh-size').value, Math.ceil(big * 1.15 / g) * g);
+  shapeChanged();
+}
+/* ---- importing a schematic file (SVG or DXF) ---- */
+function schematicStatus(text, bad) {
+  const el = $('sc-status'); el.textContent = text; el.style.color = bad ? '#b91c1c' : '';
+}
+function schematicChosen(inp) {
+  const f = inp.files[0]; if (!f) return;
+  const reader = new FileReader();
+  reader.onload = () => { schematicText = String(reader.result); schematicName = f.name; schematicReload(); };
+  reader.readAsText(f);
+  inp.value = '';
+}
+async function schematicReload() {
+  if (!schematicText) return;
+  const body = {text: schematicText, crest_lines: $('sc-lines').value,
+                format: /\.dxf$/i.test(schematicName) ? 'dxf' : /\.svg$/i.test(schematicName) ? 'svg' : 'auto'};
+  if ($('sc-units').value) body.unit_mm = +$('sc-units').value;
+  const r = await api('/api/schematic/parse', body);
+  if (r.error) { schematicStatus(`${schematicName}: ${r.error}`, true); return; }
+  const k = 1 / unitMm();
+  shapePts = r.outline_mm.map(q => [+(q[0] * k).toFixed(4), +(q[1] * k).toFixed(4)]);
+  schematicCrests = r.crest_xs_mm;
+  const big = Math.max(...shapePts.flat()), g = +$('sh-grid').value || 1;
+  $('sh-size').value = Math.max(Math.ceil(big * 1.15 / g) * g, 1);
+  const pitch = r.pitch_mm ? `, crest spacing about ${(r.pitch_mm / 25.4).toFixed(2)} in` : '';
+  schematicStatus(`${schematicName}: ${r.outline_mm.length} corners, ${r.crest_xs_mm.length} crest lines${pitch}. ${r.notes.join(' ')}`);
+  $('pl-mode').value = 'shape';
+  setShapeMode();
+}
+function schematicRemoveCrests() { schematicCrests = []; schematicStatus(''); drawShape(); planPreview(); }
+
+function shapeUndo() { shapePts.pop(); shapeChanged(); }
+function shapeClear() { shapePts = []; schematicCrests = []; schematicStatus(''); shapeChanged(); }
+function shapeChanged() { shapeSyncText(); drawShape(); planPreview(); }
+function shapeSyncText() {
+  $('sh-text').value = shapePts.map(q => `${q[0]}, ${q[1]}`).join('\n');
+}
+function shapeTextChanged() {   // typing in the box: do not rewrite the box while the person types
+  const pts = [];
+  $('sh-text').value.split('\n').forEach(line => {
+    const m = line.trim().match(/^(-?\d*\.?\d+)\s*[, \t]\s*(-?\d*\.?\d+)$/);
+    if (m) pts.push([+m[1], +m[2]]);
+  });
+  shapePts = pts;
+  drawShape(); planPreview();
+}
+function drawShape() {
+  const svg = $('sh-canvas'), N = +$('sh-size').value || 40, g = +$('sh-grid').value || 1;
+  svg.setAttribute('viewBox', `0 0 ${N} ${N}`);
+  const th = N / 400, r = N / 80, fs = N / 38;
+  let h = `<rect x="0" y="0" width="${N}" height="${N}" fill="#fff"/>`;
+  if (N / g <= 120) {
+    for (let v = 0; v <= N + 1e-9; v += g) {
+      h += `<line x1="${v}" y1="0" x2="${v}" y2="${N}" stroke="#d5dae0" stroke-width="${th}"/>` +
+           `<line x1="0" y1="${v}" x2="${N}" y2="${v}" stroke="#d5dae0" stroke-width="${th}"/>`;
+    }
+  }
+  const pts = shapePts.map(q => `${q[0]},${N - q[1]}`).join(' ');
+  if (shapePts.length >= 3) {
+    h += `<polygon points="${pts}" fill="#e9ecef" stroke="none"/>`;
+    if (schematicCrests.length) {   // the real crest lines from the imported file, clipped to the roof
+      const u = unitMm();
+      h += `<clipPath id="shclip"><polygon points="${pts}"/></clipPath><g clip-path="url(#shclip)">` +
+           schematicCrests.map(cx => `<line x1="${cx / u}" y1="0" x2="${cx / u}" y2="${N}" stroke="#7fb2dd" stroke-width="${th * 1.2}"/>`).join('') + '</g>';
+    }
+    h += `<polygon points="${pts}" fill="none" stroke="#2b2b2b" stroke-width="${th * 2.5}"/>`;
+  }
+  else if (shapePts.length === 2) h += `<polyline points="${pts}" fill="none" stroke="#2b2b2b" stroke-width="${th * 2.5}"/>`;
+  shapePts.forEach((q, i) => {
+    h += `<circle data-i="${i}" cx="${q[0]}" cy="${N - q[1]}" r="${r}" fill="${i === 0 ? '#2e933c' : '#d1495b'}" stroke="#fff" stroke-width="${th}" style="cursor:grab"/>` +
+         `<text x="${q[0] + r * 1.4}" y="${N - q[1] - r * 1.1}" font-size="${fs}" font-family="sans-serif" fill="#333" style="pointer-events:none">${i + 1}</text>`;
+  });
+  svg.innerHTML = h;
+}
+function shapeEventPoint(e) {
+  const svg = $('sh-canvas'), N = +$('sh-size').value || 40, g = +$('sh-grid').value || 1;
+  const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+  const q = pt.matrixTransform(svg.getScreenCTM().inverse());
+  const snap = v => +Math.max(0, Math.min(N, Math.round(v / g) * g)).toFixed(4);
+  return [snap(q.x), snap(N - q.y)];
+}
+(function wireShapeCanvas() {
+  const svg = $('sh-canvas');
+  svg.addEventListener('pointerdown', e => {
+    const i = e.target.dataset ? e.target.dataset.i : undefined;
+    if (i !== undefined) { shapeDrag = +i; try { svg.setPointerCapture(e.pointerId); } catch (_) {} return; }
+    shapePts.push(shapeEventPoint(e)); shapeChanged();
+  });
+  svg.addEventListener('pointermove', e => {
+    if (shapeDrag < 0) return;
+    shapePts[shapeDrag] = shapeEventPoint(e); shapeSyncText(); drawShape();
+  });
+  const end = () => { if (shapeDrag >= 0) { shapeDrag = -1; planPreview(); } };
+  svg.addEventListener('pointerup', end);
+  svg.addEventListener('pointercancel', end);
+  svg.addEventListener('dblclick', e => {
+    const i = e.target.dataset ? e.target.dataset.i : undefined;
+    if (i !== undefined) { shapePts.splice(+i, 1); shapeChanged(); }
+  });
+})();
+
+function paintPlan(s) {
+  const st = $('pl-status');
+  if (!s.plan) { st.textContent = 'No planned run yet. Press Run.'; return; }
+  st.textContent = `${s.state.replace(/_/g, ' ')}. Row ${s.row || '-'}, spot ${s.spot || '-'}. Sim time ${s.time.toFixed(1)} s.`;
+  const log = (s.spot_log || []).filter(e => e.lateral_mm != null);
+  $('pl-accuracy').textContent = log.length
+    ? `Locomotion measured ${log.length} spot${log.length > 1 ? 's' : ''}. Last: lateral ${log[log.length - 1].lateral_mm.toFixed(2)} mm, along ${(log[log.length - 1].along_mm ?? 0).toFixed(1)} mm. Worst lateral ${Math.max(...log.map(e => Math.abs(e.lateral_mm))).toFixed(2)} mm (target 0.5).`
+    : '';
+  if (!planSynced) { planSynced = true; loadPlanForm(s.plan); }
+  if (!planShownKey) return;
+  if (!samePlan(s.plan, JSON.parse(planShownKey))) return;   // the picture is for a different roof than the one running
+  const doc = $('pl-frame').contentDocument;
+  if (!doc || !doc.getElementById('spot-1-1')) return;
+  const key = JSON.stringify([s.state, s.row, s.spot, s.skipped, s.route]);
+  if (key === lastPlanPaint) return;
+  lastPlanPaint = key;
+  const skipped = new Set(s.skipped.map(x => x.join('-')));
+  s.route.forEach((n, r) => {
+    for (let i = 1; i <= n; i++) {
+      const el = doc.getElementById(`spot-${r + 1}-${i}`);
+      if (!el) continue;
+      const before = s.row && (r + 1 < s.row || (r + 1 === s.row && i < s.spot));
+      const here = s.row === r + 1 && s.spot === i && s.state !== 'IDLE';
+      let fill = '#d1495b', grow = 1;
+      if (skipped.has(`${r + 1}-${i}`)) fill = '#edae49';
+      else if (s.state === 'RUN_COMPLETE' || before) fill = '#2e933c';
+      else if (here) { fill = (s.state === 'WAIT_OPERATOR' || s.state === 'ESTOP') ? '#b91c1c' : '#2563eb'; grow = 1.6; }
+      el.style.fill = fill;
+      if (!el.dataset.r) el.dataset.r = el.getAttribute('r');
+      el.setAttribute('r', +el.dataset.r * grow);
+    }
+  });
+}
+
 async function runTests() { await api('/api/run_tests', {}); pollTests(); }
 let testTimer = null;
 async function pollTests() {
@@ -727,6 +1115,7 @@ async function pollTests() {
   clearTimeout(testTimer);
   if (r.running) testTimer = setTimeout(pollTests, 500);
 }
+if (location.hash === '#plan') showTab('plan');   // deep link: http://127.0.0.1:8765/#plan
 </script>
 </body>
 </html>

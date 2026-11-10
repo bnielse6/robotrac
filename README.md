@@ -1,4 +1,4 @@
-# Roofing Robot Control System (MSE 4499)
+﻿# Roofing Robot Control System (MSE 4499)
 
 The control system for a robot that fastens plates and screws along rows of a roof. This folder holds the design, the Pi software, the simulator, and the ESP32 firmware.
 
@@ -39,7 +39,11 @@ The control system for a robot that fastens plates and screws along rows of a ro
 | `docs/next_steps.md` | Status, decision log, open questions, known gaps, and the roadmap in phases |
 | `docs/setup_guide.md` | Tools installed on this PC, commands, where files go, troubleshooting, Pi setup outline |
 | `supervisor/roofbot/planner_svg.py`, `supervisor/plan_preview.py` | SVG preview of a planned layout, with named layers and one style block to restyle |
-| `supervisor/roofbot/planner.py` | Roof layout planner: whole 4x8 ft boards, MF-27 fastener pattern, crest snap, lawnmower rows (not yet wired into the Supervisor) |
+| `supervisor/roofbot/planner.py` | Roof layout planner: whole 4x8 ft boards, MF-27 fastener patterns, drawn roof outlines, crest snap (even pitch or real crest positions), lawnmower rows with turns beside the last spot, reversing and turn data. Runs in the simulator and the dashboard through `layout_to_route` |
+| `supervisor/roofbot/schematic.py`, `docs/samples/` | Reads a roof schematic (SVG or DXF) into an outline and crest positions, and sample files |
+| `supervisor/roofbot/localization.py`, `supervisor/accuracy_study.py` | Model of how accurately Locomotion's cross-track control stops at each spot (is +/-0.5 mm achievable?), with placeholder numbers |
+| `docs/path_planning_findings.md`, `docs/figures/` | **The path planning findings, written for presenting**: approach, results with figures, the accuracy analysis, what is not done and what is only assumed |
+| `supervisor/roofbot/shapes.py` | Library of common roof outlines (L, T, U, H, plus, ...) |
 | `docs/brainstorm-2026-11-09.md` | Session notes: path planner, deck and fastening pattern, SVG preview, Supervisor communication, one versus two ESP32s |
 | `docs/pin_map.md` | Draft pin map: every hardware signal, pin count, location and noise column, to decide one ESP32 or more |
 | `docs/design_concept.md` | The long-term design reference: requirements, architecture summary, navigation and sensing concept, and the design decision log. Updated whenever a decision changes |
@@ -51,7 +55,7 @@ The control system for a robot that fastens plates and screws along rows of a ro
 |---|---|
 | Design (flowcharts, state chart, errors) | Done |
 | Message schema | First draft, reviewed against the simulator |
-| Supervisor, router, camera service | Written and tested (109 tests) |
+| Supervisor, router, camera service | Written and tested (229 tests) |
 | Simulator and dashboard | Written and tested. The dashboard was checked in a headless browser. |
 | Pi serial link and `robot_main.py` | Written, **not yet tried on hardware** |
 | ESP32 firmware | Written and **compiles** (simulated and real-hardware builds). **Not yet run on a board.** |

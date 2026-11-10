@@ -4,17 +4,18 @@ flowchart TD
   classDef bad fill:#fde8e8,stroke:#b33
   classDef act fill:#e8f0fb,stroke:#1f3a5f
   A([CMD_START: turn to the next row<br/>direction from the route map:<br/>right twice, then left twice, alternating]):::start
+  R[Drive on to the turn point<br/>run-out, if the route map has one]:::act
   B{Turned 90?<br/>encoder}
   C[Turn]:::act
   D[Drive forward]:::act
-  E{Front sensor on<br/>the next beam?}
+  E{Crossed the planned<br/>number of crests?<br/>front sensor}
   F{Distance or<br/>time limit used up?}
-  G{Encoder position<br/>approved?}
+  G{Encoder agrees with<br/>the planned row gap?}
   H{Turned 90 again?<br/>encoder}
   I[Turn]:::act
-  J([DONE: facing the other way<br/>on the next beam]):::ok
+  J([DONE: facing the other way<br/>on the next crest]):::ok
   X([FAULT: TURN_FAILED]):::bad
-  A --> B
+  A --> R --> B
   B -- NO --> C --> B
   B -- YES --> D --> E
   E -- NO --> F

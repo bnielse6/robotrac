@@ -15,10 +15,14 @@ namespace {
 char simFault[24] = "";
 bool fault(const char* name) { return strcmp(simFault, name) == 0; }
 
-enum class Motion : uint8_t { Stopped, Forward, Relocate, TurnRight, TurnLeft };
+enum class Motion : uint8_t { Stopped, Forward, Backward, Relocate, TurnRight, TurnLeft };
 Motion motion = Motion::Stopped;
 float encoder = 0;
 float heading = 0;
+float lateral = 0;    // mm, positive = to the right of the crest centre
+float steerCmd = 0;   // the last steering command from Locomotion
+float nudgeLeft = 0;  // seconds until the current nudge finishes
+float nudgeBy = 0;    // the sideways correction it will apply
 uint32_t lastTick = 0;
 
 int platesLeft = 12;
@@ -46,12 +50,23 @@ void tick(uint32_t now) {
 
   switch (motion) {
     case Motion::Forward:
+    case Motion::Backward:  // the encoder counts distance travelled, so it goes up either way
       encoder += 200.0f * dt;
+      // sideways: a steady drift if asked for, and the steering moves the robot 25 mm/s at full command
+      lateral += ((fault("DRIFT") ? 3.0f : 0.0f) + 25.0f * steerCmd) * dt;
       if (fault("CANNOT_REACH_SPOT") && encoder > 50.0f) encoder = 50.0f;  // wheels slip
       break;
-    case Motion::TurnRight: heading += 90.0f * dt; break;
-    case Motion::TurnLeft: heading -= 90.0f * dt; break;
+    case Motion::TurnRight: heading += 90.0f * dt; lateral = 3.0f; break;   // a turn leaves the robot 3 mm off the new crest
+    case Motion::TurnLeft: heading -= 90.0f * dt; lateral = -3.0f; break;
     default: break;
+  }
+
+  if (nudgeLeft > 0) {  // a nudge takes 1.5 s, then the sideways error is corrected
+    nudgeLeft -= dt;
+    if (nudgeLeft <= 0) {
+      nudgeLeft = 0;
+      if (!fault("NOT_ALIGNED")) lateral -= nudgeBy;  // with that fault the nudge does nothing
+    }
   }
 
   if (drilling) {
@@ -68,16 +83,32 @@ void tick(uint32_t now) {
 void setStackLight(bool red, bool amber, bool green) { (void)red; (void)amber; (void)green; }
 
 // ---- locomotion
-bool onBeam() { return !fault("OFF_BEAM"); }
-bool frontSensorOnBeam() { return !fault("TURN_FAILED") && encoder >= 80.0f; }
+bool onCrest() { return !fault("OFF_CREST") && fabsf(lateral) <= CROSS_TRACK_CAPTURE_MM; }
+float crossTrackMm() { return fault("OFF_CREST") ? 100.0f : lateral; }
+void steer(float command) { steerCmd = command; }
+void nudge(float lateralMm) {
+  nudgeBy = lateralMm;
+  nudgeLeft = 1.5f;
+}
+bool nudgeDone() { return nudgeLeft <= 0; }
+bool frontSensorOnCrest() { return !fault("TURN_FAILED") && encoder >= 80.0f; }
+// The simulator assumes crests 152.4 mm (6 in) apart. A planned pitch that differs makes a simulated
+// turn disagree with its encoder check, which then reports TURN_FAILED. That is the check working.
+int crestsCrossed() { return fault("TURN_FAILED") ? 0 : (int)(encoder / 152.4f); }
 float encoderMm() { return encoder; }
 void resetEncoder() { encoder = 0; }
 float headingDeg() { return heading; }
 void resetHeading() { heading = 0; }
 void driveForward() { motion = Motion::Forward; }
+void driveBackward() { motion = Motion::Backward; }
 void relocate() { motion = Motion::Relocate; }
 void turn(bool right) { motion = right ? Motion::TurnRight : Motion::TurnLeft; }
-void stopWheels() { motion = Motion::Stopped; }
+void stopWheels() {
+  steerCmd = 0;
+  nudgeLeft = 0;  // stopping the wheels also cancels a nudge
+  if (fault("OVERSHOT_SPOT") && (motion == Motion::Forward || motion == Motion::Backward)) encoder += 60.0f;  // the robot coasts past the spot
+  motion = Motion::Stopped;
+}
 
 // ---- plate
 bool platesAvailable() { return !fault("NO_PLATES") && platesLeft > 0; }

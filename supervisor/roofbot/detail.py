@@ -14,6 +14,8 @@ except the 10 s torque limit from the guide.
 """
 from __future__ import annotations
 
+import math
+import random
 from dataclasses import dataclass, field
 from typing import Callable, Optional
 
@@ -21,6 +23,14 @@ from .messages import FaultCode, Message, MsgType, Node, Step
 from .sim import Outcome, StubSubsystem
 
 CHECK_S = 0.25          # a sensor or camera check
+OVERSHOOT_DEMO_MM = 60.0  # how far past the spot a scripted OVERSHOT_SPOT rolls. Placeholder
+ALIGN_ACCEPT_MM = 0.2   # stop-and-nudge: at the spot the sideways error must be within this (firmware ALIGN_ACCEPT_MM)
+ALIGN_MAX_TRIES = 3     # nudges before NOT_ALIGNED (firmware ALIGN_MAX_ATTEMPTS)
+NUDGE_S = 1.5           # time for one nudge. Placeholder
+NUDGE_RESIDUAL_MM = 0.1  # sideways error left after a nudge. Placeholder
+START_LATERAL_SIGMA_MM = 3.0   # how far off the crest the robot is first put down. Placeholder
+TURN_LATERAL_SIGMA_MM = 3.0    # the sideways error a turn leaves. Placeholder
+SETTLE_MM = 200.0       # driving that cuts the sideways error to 1/e of what it was. Placeholder
 TORQUE_LIMIT_S = 10.0   # from the guide
 TORQUE_TARGET_NM = 4.0  # placeholder
 SUPPLY_FULL = 12
@@ -36,28 +46,35 @@ def _n(node_id: str, kind: str, text: str, **edges: str) -> dict:
 # kind: start, act, check, ok, bad. edges: next, yes, no (ids of other nodes)
 FLOWS: dict[str, list[dict]] = {
     "DRIVE": [
-        _n("start", "start", "CMD_START: drive to the next spot", next="beam"),
-        _n("beam", "check", "On the beam? (beam sensors)", yes="at_spot", no="limit_beam"),
-        _n("limit_beam", "check", "Time limit used up?", yes="x_off_beam", no="relocate"),
-        _n("relocate", "act", "Relocate to the beam", next="beam"),
-        _n("at_spot", "check", "At the right spot? (encoder + route map)", yes="done", no="limit_spot"),
+        _n("start", "start", "CMD_START: drive to the next spot", next="crest"),
+        _n("crest", "check", "On the crest? (crest sensors)", yes="at_spot", no="limit_crest"),
+        _n("limit_crest", "check", "Time limit used up?", yes="x_off_crest", no="relocate"),
+        _n("relocate", "act", "Relocate to the crest", next="crest"),
+        _n("at_spot", "check", "At the right spot? (encoder + route map)", yes="over", no="limit_spot"),
+        _n("over", "check", "Past the spot by more than the limit? (encoder)", yes="x_overshot", no="aligned"),
+        _n("aligned", "check", "Sideways error within the limit? (crest sensors)", yes="done", no="limit_align"),
+        _n("limit_align", "check", "Tried too many times?", yes="x_not_aligned", no="nudge"),
+        _n("nudge", "act", "Nudge sideways by the error", next="aligned"),
         _n("limit_spot", "check", "Time limit used up?", yes="x_cannot_reach", no="move"),
-        _n("move", "act", "Keep moving to the spot", next="beam"),
+        _n("move", "act", "Keep moving to the spot", next="crest"),
         _n("done", "ok", "DONE: stop at the spot"),
-        _n("x_off_beam", "bad", "FAULT: OFF_BEAM (wheels stop)"),
+        _n("x_off_crest", "bad", "FAULT: OFF_CREST (wheels stop)"),
         _n("x_cannot_reach", "bad", "FAULT: CANNOT_REACH_SPOT (wheels stop)"),
+        _n("x_overshot", "bad", "FAULT: OVERSHOT_SPOT (wheels stop, no retry)"),
+        _n("x_not_aligned", "bad", "FAULT: NOT_ALIGNED (wheels stop)"),
     ],
     "TURN": [
-        _n("start", "start", "CMD_START: turn to the next row", next="t90a"),
+        _n("start", "start", "CMD_START: turn to the next row", next="run_out"),
+        _n("run_out", "act", "Drive on to the turn point (run-out), if the route map has one", next="t90a"),
         _n("t90a", "check", "Turned 90? (encoder)", yes="drive_fwd", no="turn1"),
         _n("turn1", "act", "Turn", next="t90a"),
         _n("drive_fwd", "act", "Drive forward", next="front"),
-        _n("front", "check", "Front sensor on the next beam?", yes="enc", no="limit_turn"),
+        _n("front", "check", "Crossed the planned number of crests? (front sensor)", yes="enc", no="limit_turn"),
         _n("limit_turn", "check", "Distance or time limit used up?", yes="x_turn", no="front"),
-        _n("enc", "check", "Encoder position approved?", yes="t90b", no="limit_turn"),
+        _n("enc", "check", "Encoder agrees with the planned row gap?", yes="t90b", no="limit_turn"),
         _n("t90b", "check", "Turned 90 again? (encoder)", yes="done", no="turn2"),
         _n("turn2", "act", "Turn", next="t90b"),
-        _n("done", "ok", "DONE: facing the other way on the next beam"),
+        _n("done", "ok", "DONE: facing the other way on the next crest"),
         _n("x_turn", "bad", "FAULT: TURN_FAILED (wheels stop)"),
     ],
     "PLATE": [
@@ -103,7 +120,7 @@ FLOWS: dict[str, list[dict]] = {
 
 # Which fault codes each flow can produce.
 FLOW_FAULTS = {
-    "DRIVE": {"OFF_BEAM", "CANNOT_REACH_SPOT"},
+    "DRIVE": {"OFF_CREST", "CANNOT_REACH_SPOT", "OVERSHOT_SPOT", "NOT_ALIGNED"},
     "TURN": {"TURN_FAILED"},
     "PLATE": {"PLATE_NOT_ARRIVED", "PLACEMENT_REJECTED"},
     "SCREW": {"SCREW_NOT_IN_POSITION"},
@@ -111,8 +128,8 @@ FLOW_FAULTS = {
 }
 
 INITIAL_SENSORS = {
-    "LOCOMOTION": {"beam_sensors": "on beam", "front_sensor": "not on a beam", "encoder_mm": 0.0,
-                   "target_mm": 0.0, "heading_deg": 0, "wheels": "stopped"},
+    "LOCOMOTION": {"crest_sensors": "on crest", "front_sensor": "not on a crest", "encoder_mm": 0.0,
+                   "target_mm": 0.0, "lateral_mm": 0.0, "heading_deg": 0, "wheels": "stopped"},
     "PLATE": {"plates_left": SUPPLY_FULL, "plate_position": "in hopper", "plate_x": 0.0,
               "camera_sees_plate": False, "tripwire": "idle"},
     "SCREW": {"screws_left": SUPPLY_FULL, "screw_position": "in magazine", "camera_sees_both": False},
@@ -162,6 +179,9 @@ class ProcessSubsystem(StubSubsystem):
         self._cmd: Optional[Message] = None
         self._final: Final = ("DONE", None)
         self._effect: Optional[Callable[[], None]] = None
+        self._done_params: Optional[dict] = None   # extra fields on the DONE (Locomotion: lateral_mm)
+        # Locomotion only: how far off the crest centre the robot is now (mm, positive = right)
+        self._lateral_mm = random.Random(1).gauss(0.0, START_LATERAL_SIGMA_MM)
 
     # ---- the outside: same contract as StubSubsystem
 
@@ -238,6 +258,7 @@ class ProcessSubsystem(StubSubsystem):
         self.path = []
         self.last_result = None
         self._effect = None
+        self._done_params = None
         if outcome.kind == "SILENT":
             self._phases = None
             self.status = "silent"
@@ -271,7 +292,7 @@ class ProcessSubsystem(StubSubsystem):
         if kind == "DONE":
             if self._effect:
                 self._effect()
-            outcome = Outcome("DONE")
+            outcome = Outcome("DONE", params=self._done_params)
             self.last_result = "DONE"
         elif kind == "REFILL":
             outcome = Outcome("REFILL", item=payload)
@@ -315,85 +336,156 @@ class ProcessSubsystem(StubSubsystem):
 
     # S1: drive straight
     def _drive(self, msg: Message, code: Optional[str]):
-        dist = float(msg.params.get("distance_mm", 300.0))
+        signed = float(msg.params.get("distance_mm", 300.0))   # negative means reverse
+        dist = abs(signed)
+        reverse = signed < 0
+        moving = "reversing" if reverse else "driving"
         move_s = max(0.8, min(dist / 200.0, 3.0))
-        phases = [P("start", 0.1, note=f"Drive {dist:.0f} mm to the next spot",
+        phases = [P("start", 0.1, note=f"{'Reverse' if reverse else 'Drive'} {dist:.0f} mm to the next spot",
                     sets={"encoder_mm": 0.0, "target_mm": dist, "wheels": "stopped"})]
-        if code == "OFF_BEAM":
+        if code == "OFF_CREST":
             for i in range(3):
-                phases.append(P("beam", CHECK_S, "no", "Beam sensors: NOT on the beam",
-                                sets={"beam_sensors": "OFF BEAM", "wheels": "stopped"}))
+                phases.append(P("crest", CHECK_S, "no", "Crest sensors: NOT on the crest",
+                                sets={"crest_sensors": "OFF CREST", "wheels": "stopped"}))
                 last = i == 2
-                phases.append(P("limit_beam", CHECK_S, "yes" if last else "no",
+                phases.append(P("limit_crest", CHECK_S, "yes" if last else "no",
                                 "Time limit used up, stopping" if last else "Time limit not used up"))
                 if not last:
-                    phases.append(P("relocate", 0.6, note="Trying to find the beam again",
+                    phases.append(P("relocate", 0.6, note="Trying to find the crest again",
                                     sets={"wheels": "relocating"}))
-            phases.append(P("x_off_beam", 0.2, note="Wheels stopped. Reporting OFF_BEAM",
+            phases.append(P("x_off_crest", 0.2, note="Wheels stopped. Reporting OFF_CREST",
                             sets={"wheels": "stopped"}))
-            return phases, ("FAULT", FaultCode.OFF_BEAM), None
-        on_beam = {"beam_sensors": "on beam"}
+            return phases, ("FAULT", FaultCode.OFF_CREST), None
+        on_crest = {"crest_sensors": "on crest"}
+        # where the sideways error stands when it stops: the steering pulls it in with distance
+        lat_pre = (self._lateral_mm * math.exp(-dist / SETTLE_MM)
+                   + random.Random(msg.row * 100 + msg.spot + 7).gauss(0.0, 0.1))
         if dist <= 0:
-            phases += [P("beam", CHECK_S, "yes", "Beam sensors: on the beam", sets=on_beam),
+            phases += [P("crest", CHECK_S, "yes", "Crest sensors: on the crest", sets=on_crest),
                        P("at_spot", CHECK_S, "yes", "Already at the spot"),
-                       P("done", 0.1, note="Stopped at the spot")]
-            return phases, ("DONE", None), None
+                       P("over", CHECK_S, "no", "Encoder: not past the spot")]
+            return self._align(msg, phases, lat_pre, code)
+        if code == "OVERSHOT_SPOT":
+            past = dist + OVERSHOOT_DEMO_MM   # the robot rolls on past the spot
+            phases += [P("crest", CHECK_S, "yes", "Crest sensors: on the crest", sets=on_crest),
+                       P("at_spot", CHECK_S, "no", f"Encoder: 0 of {dist:.0f} mm, not there yet"),
+                       P("limit_spot", CHECK_S, "no", "Time limit not used up"),
+                       P("move", move_s, note="Driving to the spot", sets={"wheels": moving},
+                         ramps={"encoder_mm": (0.0, past)}),
+                       P("crest", CHECK_S, "yes", "Crest sensors: on the crest", sets=on_crest),
+                       P("at_spot", CHECK_S, "yes", "Encoder: at the spot, stopping the wheels",
+                         sets={"wheels": "stopped"}),
+                       P("over", CHECK_S, "yes", f"Encoder: {OVERSHOOT_DEMO_MM:.0f} mm past the spot"),
+                       P("x_overshot", 0.2, note="Wheels stopped. Reporting OVERSHOT_SPOT")]
+            return phases, ("FAULT", FaultCode.OVERSHOT_SPOT), None
         if code == "CANNOT_REACH_SPOT":
             reached = 0.0
             for fraction in (0.7, 0.85):
-                phases += [P("beam", CHECK_S, "yes", "Beam sensors: on the beam", sets=on_beam),
+                phases += [P("crest", CHECK_S, "yes", "Crest sensors: on the crest", sets=on_crest),
                            P("at_spot", CHECK_S, "no", "Encoder: not at the spot yet"),
                            P("limit_spot", CHECK_S, "no", "Time limit not used up")]
                 phases.append(P("move", move_s * 0.6, note="Moving, but falling short",
-                                sets={"wheels": "driving"},
+                                sets={"wheels": moving},
                                 ramps={"encoder_mm": (reached, dist * fraction)}))
                 reached = dist * fraction
-            phases += [P("beam", CHECK_S, "yes", "Beam sensors: on the beam", sets=on_beam),
+            phases += [P("crest", CHECK_S, "yes", "Crest sensors: on the crest", sets=on_crest),
                        P("at_spot", CHECK_S, "no", "Encoder: still short of the spot"),
                        P("limit_spot", CHECK_S, "yes", "Time limit used up, stopping"),
                        P("x_cannot_reach", 0.2, note="Wheels stopped. Reporting CANNOT_REACH_SPOT",
                          sets={"wheels": "stopped"})]
             return phases, ("FAULT", FaultCode.CANNOT_REACH_SPOT), None
-        phases += [P("beam", CHECK_S, "yes", "Beam sensors: on the beam", sets=on_beam),
+        phases += [P("crest", CHECK_S, "yes", "Crest sensors: on the crest", sets=on_crest),
                    P("at_spot", CHECK_S, "no", f"Encoder: 0 of {dist:.0f} mm, not there yet"),
                    P("limit_spot", CHECK_S, "no", "Time limit not used up"),
-                   P("move", move_s, note="Driving to the spot", sets={"wheels": "driving"},
+                   P("move", move_s, note="Driving to the spot", sets={"wheels": moving},
                      ramps={"encoder_mm": (0.0, dist)}),
-                   P("beam", CHECK_S, "yes", "Beam sensors: on the beam", sets=on_beam),
+                   P("crest", CHECK_S, "yes", "Crest sensors: on the crest", sets=on_crest),
                    P("at_spot", CHECK_S, "yes", "Encoder: at the right spot", sets={"wheels": "stopped"}),
-                   P("done", 0.1, note="Stopped at the spot")]
-        return phases, ("DONE", None), None
+                   P("over", CHECK_S, "no", "Encoder: not past the spot")]
+        return self._align(msg, phases, lat_pre, code)
+
+    def _align(self, msg: Message, phases: list, lat_pre: float, code: Optional[str]):
+        """The stop-and-nudge step at the spot: check the sideways error, nudge it out, check again.
+
+        `lat_pre` is the sideways error when the robot stopped. A scripted NOT_ALIGNED makes every
+        nudge fail, so it runs out of tries.
+        """
+        rng = random.Random(msg.row * 100 + msg.spot)
+        lat, tries = lat_pre, 0
+        while True:
+            ok = abs(lat) <= ALIGN_ACCEPT_MM and code != "NOT_ALIGNED"
+            phases.append(P("aligned", CHECK_S, "yes" if ok else "no",
+                            f"Crest sensors: sideways error {lat:+.2f} mm, "
+                            + ("within the limit" if ok else f"outside {ALIGN_ACCEPT_MM} mm"),
+                            sets={"lateral_mm": round(lat, 2)}))
+            if ok:
+                break
+            last = tries >= ALIGN_MAX_TRIES
+            phases.append(P("limit_align", CHECK_S, "yes" if last else "no",
+                            "Tried too many times, stopping" if last else "Not tried too many times yet"))
+            if last:
+                phases.append(P("x_not_aligned", 0.2, note="Wheels stopped. Reporting NOT_ALIGNED",
+                                sets={"wheels": "stopped"}))
+                return phases, ("FAULT", FaultCode.NOT_ALIGNED), None
+            phases.append(P("nudge", NUDGE_S, note=f"Nudging {abs(lat):.1f} mm {'left' if lat > 0 else 'right'}",
+                            sets={"wheels": "nudging"}))
+            lat = lat * 0.95 if code == "NOT_ALIGNED" else rng.gauss(0.0, NUDGE_RESIDUAL_MM)
+            tries += 1
+        phases.append(P("done", 0.1, note="Stopped at the spot", sets={"wheels": "stopped"}))
+
+        def remember() -> None:     # runs when the DONE is sent
+            self._lateral_mm = lat
+            self._done_params = {"lateral_mm": round(lat, 2)}
+        return phases, ("DONE", None), remember
 
     # S2: turn to the next row
     def _turn(self, msg: Message, code: Optional[str]):
         sign = 90 if msg.params.get("direction", "RIGHT") == "RIGHT" else -90
         h0 = self._heading_now()
-        phases = [P("start", 0.1, note=f"Turn {msg.params.get('direction', 'RIGHT')} twice onto the next beam",
-                    sets={"front_sensor": "not on a beam", "wheels": "stopped"}),
+        crests = int(msg.params.get("crests", 0))            # crests to cross, 0 when the route map does not say
+        shift = float(msg.params.get("distance_mm", 0.0))    # the sideways gap to the next row
+        across = (f"{crests} crests, {shift:.0f} mm" if crests and shift else
+                  f"{crests} crests" if crests else f"{shift:.0f} mm" if shift else "")
+        drive_s = max(0.8, min(shift / 200.0, 3.0)) if shift else 0.8
+        run_out = float(msg.params.get("run_out_mm", 0.0))   # drive on past the last spot before turning
+        phases = [P("start", 0.1, note=f"Turn {msg.params.get('direction', 'RIGHT')} twice onto the next crest",
+                    sets={"front_sensor": "not on a crest", "wheels": "stopped"}),
+                  *([P("run_out", max(0.8, min(run_out / 200.0, 3.0)),
+                       note=f"Driving on {run_out:.0f} mm past the last spot, to the turn point",
+                       sets={"wheels": "driving", "encoder_mm": 0.0}, ramps={"encoder_mm": (0.0, run_out)}),
+                    P("t90a", CHECK_S, "no", "Wheels stopped at the turn point", sets={"wheels": "stopped"})]
+                    if run_out > 0 else []),
                   P("t90a", CHECK_S, "no", "Encoder: not turned yet"),
                   P("turn1", 1.0, note="Turning 90", sets={"wheels": "turning"},
                     ramps={"heading_deg": (h0, h0 + sign)}),
                   P("t90a", CHECK_S, "yes", "Encoder: turned 90"),
-                  P("drive_fwd", 0.8, note="Driving forward toward the next beam", sets={"wheels": "driving"})]
+                  P("drive_fwd", drive_s,
+                    note="Driving forward toward the next crest" + (f" ({across})" if across else ""),
+                    sets={"wheels": "driving", "encoder_mm": 0.0},
+                    ramps={"encoder_mm": (0.0, shift)} if shift else {})]
         if code == "TURN_FAILED":
             for i in range(3):
-                phases.append(P("front", CHECK_S, "no", "Front sensor: not on the next beam"))
+                phases.append(P("front", CHECK_S, "no", "Front sensor: not on the next crest"))
                 last = i == 2
                 phases.append(P("limit_turn", 0.5, "yes" if last else "no",
                                 "Limit used up, stopping" if last else "Not used up, keep driving"))
             phases.append(P("x_turn", 0.2, note="Wheels stopped. Reporting TURN_FAILED",
                             sets={"wheels": "stopped"}))
             return phases, ("FAULT", FaultCode.TURN_FAILED), None
-        phases += [P("front", CHECK_S, "no", "Front sensor: not on the next beam yet"),
+        phases += [P("front", CHECK_S, "no", "Front sensor: not on the next crest yet"),
                    P("limit_turn", 0.5, "no", "Limit not used up, keep driving"),
-                   P("front", CHECK_S, "yes", "Front sensor: on the next beam", sets={"front_sensor": "ON NEXT BEAM"}),
-                   P("enc", CHECK_S, "yes", "Encoder position approved"),
+                   P("front", CHECK_S, "yes", "Front sensor: on the next crest", sets={"front_sensor": "ON NEXT CREST"}),
+                   P("enc", CHECK_S, "yes",
+                     f"Encoder agrees with the route map: {shift:.0f} mm" if shift else "Encoder position approved"),
                    P("t90b", CHECK_S, "no", "Encoder: second turn not done yet", sets={"wheels": "stopped"}),
                    P("turn2", 1.0, note="Turning 90 again", sets={"wheels": "turning"},
                      ramps={"heading_deg": (h0 + sign, h0 + 2 * sign)}),
                    P("t90b", CHECK_S, "yes", "Encoder: turned 90 again", sets={"wheels": "stopped"}),
-                   P("done", 0.1, note="Facing the other way on the next beam")]
-        return phases, ("DONE", None), None
+                   P("done", 0.1, note="Facing the other way on the next crest")]
+
+        def after_turn() -> None:   # the turn leaves the robot a little off the new crest
+            self._lateral_mm = random.Random(msg.row * 100 + 3).gauss(0.0, TURN_LATERAL_SIGMA_MM)
+        return phases, ("DONE", None), after_turn
 
     def _heading_now(self) -> float:
         return float(self.sensors["heading_deg"])

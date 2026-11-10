@@ -107,9 +107,11 @@ The state names in each `.h` file match the node names in the flowchart diagrams
 
 ### Locomotion (S1 and S2)
 
-**Drive straight.** `Beam` (on the beam?) leads to `AtSpot` (encoder reached the target?). If not on the beam, `LimitBeam` checks the relocate time limit and either gives up with `OFF_BEAM` or goes to `Relocate` and back to `Beam`. If not at the spot, `LimitSpot` either gives up with `CANNOT_REACH_SPOT` or drives on (`Move`) and checks again.
+**Drive straight.** `Crest` (on the crest?) leads to `AtSpot` (encoder reached the target?). If not on the crest, `LimitCrest` checks the relocate time limit and either gives up with `OFF_CREST` or goes to `Relocate` and back to `Crest`. If not at the spot, `LimitSpot` either gives up with `CANNOT_REACH_SPOT` or drives on (`Move`) and checks again. Once at the spot, `AtSpot` stops the wheels at once and `Over` (past the spot by more than `SPOT_OVERSHOOT_MM`?) either reports `OVERSHOT_SPOT` or goes on to fine positioning. `Aligned` averages `ALIGN_SAMPLES` readings of the crest array while the robot stands still; within `ALIGN_ACCEPT_MM` it finishes with `DONE`, which carries `lateral_mm` and `along_mm`. Otherwise `LimitAlign` checks the tries (`ALIGN_MAX_ATTEMPTS`, then `NOT_ALIGNED`), `Nudge` calls `hal::nudge()` with the error and `NudgeWait` polls `hal::nudgeDone()` (a timeout is also `NOT_ALIGNED`), and it reads again. The nudge is a small S-move in the hardware layer (turn a few degrees, drive a short way, turn back, take back the distance covered along the row); `hal_esp32.cpp` has it as a TODO. A negative `distance_mm` drives backwards (`hal::driveBackward()`); the encoder counts distance travelled either way.
 
-**Turn.** `T90a` (turned 90?) with `Turn1` until yes, then drive forward. `Front` (front sensor on the next beam?) and `LimitTurn` loop until the beam is found or the limit is used up (`TURN_FAILED`). `Enc` checks the encoder position, then `T90b` and `Turn2` do the second 90 degree turn. Direction comes from `params.direction`. Right turns are positive heading.
+**Cross-track steering.** While driving, `Locomotion::steer()` runs on every pass of `loop()` (every `STEER_PERIOD_MS`), not once per flowchart node. It low-passes `hal::crossTrackMm()` (the crest sensor array's lateral error, positive = right of the crest), then steers against it with a PD law: `command = -(KP * error + KD * d(error)/dt)`, limited to `STEER_MAX`, through `hal::steer()`. It holds straight while reversing (the sign for reversing is not worked out yet) and while hunting for the crest. The same gains are in `supervisor/roofbot/localization.py`, which models this loop, and a test keeps the two equal. The array's error never goes over the serial link.
+
+**Turn.** If the TURN carries `params.run_out_mm`, `RunOut` first drives on that far past the last spot (the strip runs on to the level where the next strip's first screw is), then `T90a` (turned 90?) with `Turn1` until yes, then drive forward. `Front` loops with `LimitTurn` until the front sensor has counted `params.crests` crests (`hal::crestsCrossed()`), or, if the route map gave no count, until it sees the next crest, or the limit is used up (`TURN_FAILED`). `Enc` then checks the encoder against `params.distance_mm`, the planned sideways gap, to within `TURN_GAP_TOLERANCE_MM`: too short keeps driving, too far means the wrong crest was counted, so it runs out the limit and reports `TURN_FAILED`. Without a gap it only checks `TURN_MIN_FORWARD_MM`. then `T90b` and `Turn2` do the second 90 degree turn. Direction comes from `params.direction`. Right turns are positive heading.
 
 ### Plate (S3)
 
@@ -129,7 +131,7 @@ Start the drill. `Torque` checks the torque sensor against the target. If low, `
 
 ## 6. The hardware layer
 
-`hal.h` lists everything the subsystems need: sensor reads (`onBeam`, `encoderMm`, `torqueNm`, ...) and actuator commands (`driveForward`, `feedPlate`, `drillStart`, ...). It also has `setStackLight(red, amber, green)`, which only switches the lamps. `main.cpp` does the flashing, so the HAL stays simple. Actuator commands stay in effect until changed. Everything must return at once.
+`hal.h` lists everything the subsystems need: sensor reads (`onCrest`, `encoderMm`, `torqueNm`, ...) and actuator commands (`driveForward`, `feedPlate`, `drillStart`, ...). It also has `setStackLight(red, amber, green)`, which only switches the lamps. `main.cpp` does the flashing, so the HAL stays simple. Actuator commands stay in effect until changed. Everything must return at once.
 
 | Implementation | Chosen by | What it is |
 |---|---|---|
@@ -138,13 +140,16 @@ Start the drill. `Torque` checks the torque sensor against the target. If low, `
 
 **The unfinished real HAL fails safe.** Its sensors say "no" and the drill never reports retracted, so a robot flashed with it unmodified will not move and the Supervisor will stop with a fault.
 
-**Simulated faults.** With the simulated HAL, a `CMD_START` can carry `"params":{"sim":"OFF_BEAM"}` to make the fake hardware misbehave:
+**Simulated faults.** With the simulated HAL, a `CMD_START` can carry `"params":{"sim":"OFF_CREST"}` to make the fake hardware misbehave:
 
 | `sim` value | Effect |
 |---|---|
-| `OFF_BEAM` | The beam sensors never see the beam |
+| `OFF_CREST` | The crest sensors never see the crest |
 | `CANNOT_REACH_SPOT` | The wheels stall after 50 mm (use a target above 50 mm) |
-| `TURN_FAILED` | The front sensor never sees the next beam |
+| `OVERSHOT_SPOT` | The robot coasts 60 mm past the target when the wheels stop |
+| `NOT_ALIGNED` | Nudges do nothing, so the sideways error never comes inside the limit |
+| `DRIFT` | The robot wanders sideways 3 mm/s, so the steering has to work (watch `lateral_mm` in the `DONE`) |
+| `TURN_FAILED` | The front sensor never sees the next crest |
 | `NO_PLATES`, `NO_SCREWS` | The supply sensor says empty |
 | `NO_TRIPWIRE` | The tripwire never sees the plate |
 | `TORQUE_LOW` | Torque stops at 1.0 N·m, below the target |
@@ -194,13 +199,26 @@ All in `include/config.h`. Everything except the torque limit is a placeholder.
 | `LIGHT_FLASH_HALF_PERIOD_MS` | 500 | Stack light on for this long, then off for this long |
 | `PIN_LIGHT_RED`, `PIN_LIGHT_AMBER`, `PIN_LIGHT_GREEN` | -1 | Stack light outputs (HIGH = lamp on). Not wired yet. A real stack light is usually 24 V, so these will drive relays or MOSFETs, not the lamps directly. |
 | `CHECK_PERIOD_MS` | 20 | How often a subsystem looks at its sensors |
-| `DRIVE_RELOCATE_LIMIT_MS` | 6000 | Time to find the beam before `OFF_BEAM` |
+| `DRIVE_RELOCATE_LIMIT_MS` | 6000 | Time to find the crest before `OFF_CREST` |
 | `DRIVE_SPOT_LIMIT_MS` | 20000 | Time to reach the spot before `CANNOT_REACH_SPOT` |
 | `SPOT_TOLERANCE_MM` | 5 | How close counts as "at the spot" |
+| `SPOT_OVERSHOOT_MM` | 30 | Past the spot by more than this is `OVERSHOT_SPOT`. Must exceed the distance travelled between two encoder samples (about 16 mm in the simulator) plus the stopping distance. Placeholder |
 | `TURN_TURN_LIMIT_MS` | 8000 | Time for each 90 degree turn |
-| `TURN_FORWARD_LIMIT_MS` | 15000 | Time to find the next beam |
+| `TURN_FORWARD_LIMIT_MS` | 15000 | Time to find the next crest |
 | `TURN_ANGLE_TOLERANCE_DEG` | 3 | How close counts as "turned 90" |
-| `TURN_MIN_FORWARD_MM` | 50 | Smallest forward distance the encoder will approve |
+| `TURN_MIN_FORWARD_MM` | 50 | Smallest forward distance the encoder will approve, used only when the TURN has no `distance_mm` |
+| `TURN_GAP_TOLERANCE_MM` | 25 | How close the encoder must be to the planned sideways gap. Must exceed the travel between two samples. Placeholder |
+| `CROSS_TRACK_KP` | 0.08 | Steering command per mm of lateral error. Placeholder. Kept equal to `localization.py` by a test |
+| `CROSS_TRACK_KD` | 0.04 | Steering command per mm/s of change in the error. Placeholder |
+| `CROSS_TRACK_FILTER` | 0.3 | Low-pass on the sensor reading, 0 to 1 |
+| `STEER_MAX` | 1.0 | Limit of the steering command |
+| `STEER_PERIOD_MS` | 10 | How often the steering is recomputed |
+| `CROSS_TRACK_CAPTURE_MM` | 40 | Further off the crest than this and `onCrest()` is false |
+| `LATERAL_TOLERANCE_MM` | 0.5 | The target (N4). Reported in the `DONE` |
+| `ALIGN_ACCEPT_MM` | 0.2 | At the spot, nudge until the averaged sideways error is within this. Placeholder, kept equal to `localization.py` |
+| `ALIGN_MAX_ATTEMPTS` | 3 | Nudges before `NOT_ALIGNED` |
+| `ALIGN_SAMPLES` | 8 | Readings averaged before deciding (the robot is standing still) |
+| `NUDGE_LIMIT_MS` | 6000 | Time allowed for one nudge before `NOT_ALIGNED` |
 | `PLATE_ARRIVE_LIMIT_MS` | 5000 | Time to keep pushing before `PLATE_NOT_ARRIVED` |
 | `PLATE_*_SETTLE_MS`, `SCREW_LOAD_SETTLE_MS` | 500 to 800 | Wait after an actuator before asking the camera |
 | `TORQUE_LIMIT_MS` | 10000 | **From the guide.** |

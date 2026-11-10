@@ -66,6 +66,40 @@ class HappyPath(unittest.TestCase):
         self.assertGreaterEqual(len(beats), 3)
 
 
+class Overshoot(unittest.TestCase):
+    """OVERSHOT_SPOT: the robot rolled past the spot. Driving again would only make it worse."""
+
+    def overshot_world(self):
+        w = make_world(rows=((2, 300.0, 100.0),))
+        w.locomotion.queue(Step.DRIVE, fault(FaultCode.OVERSHOT_SPOT))
+        w.start_run()
+        self.assertTrue(w.run_until_state(State.WAIT_OPERATOR, 60))
+        w.run(0.1)
+        return w
+
+    def test_it_stops_at_once_with_no_retry(self):
+        w = self.overshot_world()
+        self.assertEqual(len(w.locomotion.commands_for(Step.DRIVE)), 1)   # not 3
+        self.assertEqual(last_alert(w).code, "OVERSHOT_SPOT")
+        self.assertEqual(tuple(w.light), ("AMBER", "FLASH"))   # the stack light asks for the operator
+
+    def test_the_alert_tells_the_operator_what_to_do_and_skip_is_refused(self):
+        w = self.overshot_world()
+        a = last_alert(w)
+        self.assertFalse(a.params["allow_skip"])
+        self.assertIn("Put it back", a.params["detail"])
+        w.operator(MsgType.SKIP_SPOT)
+        w.run(0.1)
+        self.assertIs(w.supervisor.state, State.WAIT_OPERATOR)
+
+    def test_resolved_drives_again_from_where_the_drive_started(self):
+        w = self.overshot_world()
+        w.operator(MsgType.RESOLVED)
+        self.assertTrue(w.run_until_state(State.RUN_COMPLETE, 120))
+        drives = w.locomotion.commands_for(Step.DRIVE)
+        self.assertEqual([m.params["distance_mm"] for m in drives], [100.0, 100.0, 300.0])
+
+
 class Retries(unittest.TestCase):
     def test_one_failure_is_retried_without_alert(self):
         w = make_world(rows=((1, 300.0, 0.0),))
@@ -139,7 +173,7 @@ class OperatorActions(unittest.TestCase):
 
     def test_skip_is_refused_for_locomotion_faults(self):
         w = make_world()
-        w.locomotion.queue(Step.DRIVE, *[fault(FaultCode.OFF_BEAM)] * 3)
+        w.locomotion.queue(Step.DRIVE, *[fault(FaultCode.OFF_CREST)] * 3)
         w.start_run()
         w.run_until_state(State.WAIT_OPERATOR, 60)
         w.operator(MsgType.SKIP_SPOT)
@@ -374,3 +408,22 @@ class StackLight(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MeasuredAtTheSpot(unittest.TestCase):
+    """Locomotion reports what its crest sensors and encoder measured when it stopped."""
+
+    def test_the_supervisor_keeps_the_lateral_and_along_errors_per_spot(self):
+        w = make_world(rows=((2, 300.0, 100.0),))
+        w.locomotion.queue(Step.DRIVE, done(lateral_mm=0.3, along_mm=-1.2), done(lateral_mm=-0.7, along_mm=2.5))
+        w.start_run()
+        self.assertTrue(w.run_until_state(State.RUN_COMPLETE, 120))
+        self.assertEqual(w.supervisor.spot_log, [
+            {"row": 1, "spot": 1, "lateral_mm": 0.3, "along_mm": -1.2},
+            {"row": 1, "spot": 2, "lateral_mm": -0.7, "along_mm": 2.5}])
+
+    def test_nothing_is_logged_when_locomotion_sends_no_measurement(self):
+        w = make_world(rows=((2, 300.0, 100.0),))
+        w.start_run()
+        self.assertTrue(w.run_until_state(State.RUN_COMPLETE, 120))
+        self.assertEqual(w.supervisor.spot_log, [])

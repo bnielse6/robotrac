@@ -18,7 +18,8 @@ void emit(const JsonDocument& doc) {
   Serial.write(reinterpret_cast<const uint8_t*>(buf), n);
 }
 
-void sendReply(const char* type, const char* node, const Message& cmd, const char* code, const char* item) {
+void sendReply(const char* type, const char* node, const Message& cmd, const char* code, const char* item,
+               const float* lateralMm = nullptr, const float* alongMm = nullptr) {
   JsonDocument doc;
   doc["v"] = PROTOCOL_VERSION;
   doc["type"] = type;
@@ -31,6 +32,8 @@ void sendReply(const char* type, const char* node, const Message& cmd, const cha
   if (cmd.step[0]) doc["step"] = cmd.step;
   if (code) doc["code"] = code;
   if (item) doc["params"]["item"] = item;
+  if (lateralMm) doc["params"]["lateral_mm"] = *lateralMm;
+  if (alongMm) doc["params"]["along_mm"] = *alongMm;
   doc["t"] = millis() / 1000.0;
   emit(doc);
 }
@@ -64,6 +67,8 @@ bool parse(const char* line, Message& m) {
   JsonObjectConst p = doc["params"].as<JsonObjectConst>();
   if (!p.isNull()) {
     m.distanceMm = p["distance_mm"] | 0.0f;
+    m.crests = p["crests"] | 0;
+    m.runOutMm = p["run_out_mm"] | 0.0f;
     copyStr(m.direction, sizeof(m.direction), p["direction"] | "");
     copyStr(m.sim, sizeof(m.sim), p["sim"] | "");
     m.ok = p["ok"] | false;
@@ -89,6 +94,10 @@ void sendReady() {
 }
 
 void sendDone(const char* node, const Message& cmd) { sendReply("DONE", node, cmd, nullptr, nullptr); }
+
+void sendDoneWithError(const char* node, const Message& cmd, float lateralMm, float alongMm) {
+  sendReply("DONE", node, cmd, nullptr, nullptr, &lateralMm, &alongMm);
+}
 
 void sendFault(const char* node, const Message& cmd, const char* code) {
   sendReply("FAULT", node, cmd, code, nullptr);

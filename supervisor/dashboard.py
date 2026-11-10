@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from dataclasses import asdict, replace
 import re
 import subprocess
 import sys
@@ -20,8 +21,13 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from roofbot.detail import FLOWS
+from roofbot.localization import LocalizationParams, analyse
 from roofbot.messages import FaultCode, MsgType, Step
+from roofbot.planner import PatternVariant, RoofSpec, layout_to_route, plan
+from roofbot.planner_svg import layout_to_svg
 from roofbot.route import Route, RowPlan
+from roofbot.schematic import parse_schematic
+from roofbot.shapes import SHAPES
 from roofbot.sim import SimWorld, done, fault, refill, silent
 
 HERE = Path(__file__).resolve().parent
@@ -31,7 +37,7 @@ TRACE_LIMIT = 250
 
 
 def parse_outcome(text: str):
-    """'DONE', 'FAULT:OFF_BEAM', 'REFILL:PLATES' or 'SILENT'."""
+    """'DONE', 'FAULT:OFF_CREST', 'REFILL:PLATES' or 'SILENT'."""
     kind, _, arg = text.partition(":")
     if kind == "DONE":
         return done()
@@ -55,8 +61,8 @@ PRESETS = {
                [("fastening", "FASTEN", ["FAULT:TORQUE_TIMEOUT"] * 2)]),
     "out-of-screws": ("Screws run out at the first spot (refill them on the SCREW panel, then RESOLVED)", True,
                       [("screw", "SCREW", ["REFILL:SCREWS"])]),
-    "off-beam": ("Robot goes off the beam 3 times (no skip allowed)", True,
-                 [("locomotion", "DRIVE", ["FAULT:OFF_BEAM"] * 3)]),
+    "off-crest": ("Robot goes off the crest 3 times (no skip allowed)", True,
+                 [("locomotion", "DRIVE", ["FAULT:OFF_CREST"] * 3)]),
     "silent-screw": ("Screw subsystem stops answering (timeout)", True,
                      [("screw", "SCREW", ["SILENT"])]),
     "manual": ("Empty, press START yourself", False, []),
@@ -74,6 +80,7 @@ class Controller:
         self._quit = False
         self.preset = "manual"
         self.rows, self.spots = 2, 3
+        self.plan_req = None  # the roof-plan form values while the world runs a planned route
         self._new_world()
         self._thread = threading.Thread(target=self._loop, daemon=True)
         self._thread.start()
@@ -83,6 +90,94 @@ class Controller:
     def _new_world(self) -> None:
         route = Route([RowPlan(self.spots, 300.0, 100.0 if i == 0 else 0.0) for i in range(self.rows)])
         self.world = SimWorld(route, detailed=True)
+        self.plan_req = None
+
+    @staticmethod
+    def _spec_from(req: dict) -> RoofSpec:
+        """Build a RoofSpec from the roof-plan form. All lengths are in millimetres."""
+        def opt(key):
+            v = req.get(key)
+            return None if v in (None, "") else float(v)
+        variant = PatternVariant(req.get("variant", "five"))
+        setback, pitch = float(req.get("setback_mm") or 0.0), opt("pitch_mm")
+        crests = req.get("crest_xs_mm") or None     # real crest positions from a schematic, if any
+        style = req.get("turn_style") or "run-out"
+        if req.get("outline_mm"):   # a drawn shape: a list of [x, y] corners
+            return RoofSpec.from_outline(req["outline_mm"], variant, setback, pitch, crest_xs_mm=crests,
+                                         turn_style=style)
+        return RoofSpec(float(req["width_mm"]), float(req["length_mm"]), variant, setback, pitch, None,
+                        crest_xs_mm=tuple(sorted(float(x) for x in crests)) if crests else None, turn_style=style)
+
+    @staticmethod
+    def read_schematic(req: dict) -> dict:
+        """Read an uploaded SVG or DXF. Raises ValueError with a plain message if it cannot be used."""
+        s = parse_schematic(str(req.get("text", "")), req.get("format", "auto"),
+                            float(req["unit_mm"]) if req.get("unit_mm") else None,
+                            req.get("crest_lines", "centres"))
+        return {"outline_mm": s.outline_mm, "crest_xs_mm": s.crest_xs_mm, "pitch_mm": s.pitch_mm,
+                "angle_deg": s.angle_deg, "notes": s.notes}
+
+    def preview_plan(self, req: dict) -> dict:
+        """Plan a roof and return its drawing. Does not touch the running simulation."""
+        spec = self._spec_from(req)
+        layout = plan(spec)
+        return {"svg": layout_to_svg(spec, layout), "spots": layout.total_spots,
+                "rows": len(layout.rows), "boards": len(layout.boards),
+                "warnings": list(layout.warnings)}
+
+    # the placeholder numbers the accuracy card lets you change
+    ACCURACY_KNOBS = ("speed_mm_s", "steer_rate_rad_s", "heading_walk_deg_per_sqrt_s", "start_lateral_sigma_mm",
+                      "array_noise_mm", "array_bias_sigma_mm", "drill_offset_sigma_mm", "encoder_scale_sigma",
+                      "stop_window_mm", "lateral_tolerance_mm", "along_tolerance_mm", "align_accept_mm",
+                      "nudge_sigma_mm", "nudge_time_s")
+    ACCURACY_INT_KNOBS = ("align_samples", "max_align_attempts")
+    ACCURACY_SWITCHES = ("fine_positioning", "along_compensates")
+
+    def estimate_accuracy(self, req: dict) -> dict:
+        """How accurately would the robot stop at each spot of this plan? See roofbot/localization.py."""
+        layout = plan(self._spec_from(req))
+        given = {k: v for k, v in (req.get("params") or {}).items() if v not in (None, "")}
+        knobs = {k: float(v) for k, v in given.items() if k in self.ACCURACY_KNOBS}
+        knobs.update({k: int(float(v)) for k, v in given.items() if k in self.ACCURACY_INT_KNOBS})
+        knobs.update({k: bool(float(v)) for k, v in given.items() if k in self.ACCURACY_SWITCHES})
+        base = replace(LocalizationParams(), **knobs)
+        as_built = analyse(layout, base)
+        carried = analyse(layout, replace(base, along_compensates=True))
+
+        def along(rep):
+            worst = max(rep.spots, key=lambda s: abs(s.along_mean_mm) + 2 * s.along_sigma_mm)
+            return {"fraction": rep.fraction_meeting_along, "worst_mean_mm": worst.along_mean_mm,
+                    "worst_sigma_mm": worst.along_sigma_mm, "worst_row": worst.row, "worst_spot": worst.spot}
+
+        w = as_built.worst
+        return {"spots": len(as_built.spots), "achievable": as_built.achievable,
+                "fraction_meeting_lateral": as_built.fraction_meeting_lateral,
+                "required_fraction": base.required_fraction, "tolerance_mm": base.lateral_tolerance_mm,
+                "worst": {"row": w.row, "spot": w.spot, "sigma_mm": w.lateral_sigma_mm, "p95_mm": w.lateral_p95_mm},
+                "dominant": as_built.dominant_lateral_term, "budget": as_built.lateral_budget_mm,
+                "fine_positioning": base.fine_positioning, "expected_nudges": as_built.expected_nudges,
+                "nudge_time_s": as_built.nudge_time_s, "worst_p_not_aligned": as_built.worst_p_not_aligned,
+                "steady_state_mm": as_built.steady_state_control_sigma_mm,
+                "settle_distance_mm": as_built.settle_distance_mm,
+                "along": {"as_built": along(as_built), "carried": along(carried),
+                          "tolerance_mm": base.along_tolerance_mm},
+                "worst_turn_miscount": max((t.miscount_probability for t in as_built.turns), default=0.0),
+                "notes": as_built.notes, "params": asdict(base)}
+
+    def run_plan(self, req: dict) -> dict:
+        """Replace the simulation with one that drives the planned route, and start it."""
+        spec = self._spec_from(req)
+        layout = plan(spec)
+        with self.lock:
+            self.world = SimWorld(layout_to_route(layout), detailed=True)
+            self.plan_req = {k: req.get(k) for k in
+                             ("variant", "width_mm", "length_mm", "setback_mm", "pitch_mm", "outline_mm",
+                              "crest_xs_mm", "turn_style")}
+            self.plan_req["turn_style"] = spec.turn_style      # the style actually used, not what was asked for
+            self.preset = "manual"
+            self.world.start_run()
+        return {"ok": True, "spots": layout.total_spots, "rows": len(layout.rows),
+                "warnings": list(layout.warnings)}
 
     def _stub(self, name: str):
         stubs = {"locomotion": self.world.locomotion, "plate": self.world.plate,
@@ -195,7 +290,9 @@ class Controller:
                 "allow_skip": s.allow_skip,
                 "pending": pending,
                 "route": [r.spots for r in w.supervisor.route.rows],
+                "plan": self.plan_req,
                 "skipped": [list(x) for x in s.skipped_spots],
+                "spot_log": s.spot_log[-60:],
                 "stubs": stubs,
                 "camera": {"ok": w.camera.ok, "silent": w.camera.silent, "usable": s.camera_usable},
                 "light": {"color": w.light[0], "mode": w.light[1]} if w.light else None,
@@ -294,6 +391,7 @@ def make_handler(ctrl: Controller, runner: TestRunner):
             elif url.path == "/api/meta":
                 self._json({"presets": {k: v[0] for k, v in PRESETS.items()},
                             "fault_codes": [c.value for c in FaultCode],
+                            "shapes": {k: {"label": label, "points_ft": pts} for k, (label, pts) in SHAPES.items()},
                             "flows": FLOWS})
             elif url.path == "/api/tests":
                 self._json(runner.result())
@@ -306,6 +404,14 @@ def make_handler(ctrl: Controller, runner: TestRunner):
                 req = json.loads(self.rfile.read(length) or b"{}")
                 if self.path == "/api/action":
                     self._json(ctrl.action(req))
+                elif self.path == "/api/schematic/parse":
+                    self._json(ctrl.read_schematic(req))
+                elif self.path == "/api/plan/accuracy":
+                    self._json(ctrl.estimate_accuracy(req))
+                elif self.path == "/api/plan/preview":
+                    self._json(ctrl.preview_plan(req))
+                elif self.path == "/api/plan/run":
+                    self._json(ctrl.run_plan(req))
                 elif self.path == "/api/run_tests":
                     self._json({"started": runner.start()})
                 else:

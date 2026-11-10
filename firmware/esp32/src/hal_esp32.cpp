@@ -32,7 +32,7 @@ void outputPin(int pin) {
 namespace hal {
 
 void begin() {
-  inputPin(PIN_BEAM_SENSOR);
+  inputPin(PIN_CREST_SENSOR);
   inputPin(PIN_FRONT_SENSOR);
   inputPin(PIN_ENCODER_A);
   inputPin(PIN_ENCODER_B);
@@ -70,14 +70,20 @@ void setStackLight(bool red, bool amber, bool green) {
 }
 
 // ---- locomotion
-bool onBeam() { return false; }            // TODO: read the beam sensors
-bool frontSensorOnBeam() { return false; } // TODO: read the front sensor
+float crossTrackMm() { return 0; }                // TODO: read the crest sensor array, differential, in mm
+void nudge(float) {}                       // TODO: the S-move described in hal.h, using heading and the encoders
+bool nudgeDone() { return true; }          // TODO: true when the S-move has finished
+void steer(float) {}                       // TODO: differential wheel speed from the command, -1 to +1
+bool onCrest() { return false; }            // TODO: read the crest sensors
+bool frontSensorOnCrest() { return false; } // TODO: read the front sensor
+int crestsCrossed() { return 0; }          // TODO: count crest edges seen by the front sensor since resetEncoder()
 float encoderMm() { return 0; }            // TODO: encoder counts to millimetres
 void resetEncoder() {}                     // TODO
 float headingDeg() { return 0; }           // TODO: from the encoders (or an IMU). Right is positive.
 void resetHeading() {}                     // TODO
 void driveForward() {}                     // TODO: both motors forward. Control speed and straightness.
-void relocate() {}                         // TODO: whatever finds the beam again
+void driveBackward() {}                    // TODO: both motors back, same control. encoderMm() still counts up
+void relocate() {}                         // TODO: whatever finds the crest again
 void turn(bool right) { (void)right; }     // TODO: motors in opposite directions
 void stopWheels() {}                       // TODO: motors off (and brake if you have one)
 

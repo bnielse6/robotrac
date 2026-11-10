@@ -1,4 +1,4 @@
-# Simulator Guide
+﻿# Simulator Guide
 
 What the simulator is for, what it does and does not prove, how it works, and how to use it. The code is in `../supervisor/`. For the robot logic itself see `complete_system_guide.md`, and for the messages see `message_schema.md`.
 
@@ -115,6 +115,10 @@ Every message, newest at the bottom, with simulated time, sender, receiver, type
 
 One line for each stop: when, which spot, which subsystem, which code, and what the operator did (RESOLVED, SKIPPED, ESTOP, or still waiting). This is the fault log the guide describes. **Supervisor notes** underneath lists things it ignored and why (stale replies, buttons pressed at the wrong time, timeouts, retries).
 
+### Roof plan tab
+
+Enter a roof and run the path planner on it. Pick the units (inches, feet or mm), the board and screw pattern (the demo 4 x 8 ft board with 4 screws, or the real MF-27 patterns), the roof width across the flutes, the length along them, an optional edge setback and an optional flute pitch. The planned layout draws on the right as you type, with the numbered spots and travel arrows. **Run this plan in the simulator** replaces the running simulation with one that drives the planned route (through `layout_to_route`) and starts it. The spots in the drawing then change colour as the robot works: green fastened, blue where the robot is, amber skipped, red still to do. The operator buttons are on the Simulator tab. Loading a normal scenario clears the plan. **Import schematic (SVG or DXF)...** in the shape editor reads a roof schematic file: the outline goes on the canvas, the real crest lines are drawn in blue and the plan snaps its rows to them (so the Flute pitch box is ignored). Choose the drawing units if the file does not say, and whether each crest is one line or a pair of edge lines. Samples are in `docs/samples/`. The **Accuracy estimate** card runs the localization model on the plan on screen: whether the +/-0.5 mm sideways tolerance is achievable, which term dominates, how many nudges the plan expects and what they cost in time, the chance of `NOT_ALIGNED`, and how the along-row errors pile up. You can switch fine positioning off to see what it buys. Its numbers are placeholders you can edit; see `localization.py`. The detailed simulator models the turn leaving a few millimetres of sideways error, the steering pulling it in with distance, and the stop-and-nudge step at each spot, and reports the final `lateral_mm` on each drive's `DONE`; the Robot progress card shows what Locomotion measured at each stopped spot, and the sideways error appears among the Locomotion sensors. **How a strip ends** chooses between two plans. *Run on to the next strip's first screw level* (the default) keeps every strip driving forwards: after its last screw a strip keeps going to the level where the next strip starts and turns there, so every strip covers the same stretch and stops only at its screws (the 5-screw pattern's middle strip does this: it runs on past its single screw). *Turn at the last screw* turns beside the last screw instead and reverses where the next strip's first screw is behind the robot, drawn as an orange dashed leg with an arrow. The turn commands carry the crest count and the sideways gap. The page can be opened straight on this tab with `http://127.0.0.1:8765/#plan`. **Roof shape** is either a rectangle (type the width and length) or **Draw the shape**. Drawing opens a grid canvas beside the preview: click to add a corner, drag a corner to move it, double-click a corner to delete it, and corners snap to the grid. The corners are also listed as `x, y` lines in a box you can type or paste into, and the **Roof shapes** menu drops in a ready-made outline: rectangle, square, L, wide L, T, U, H, plus, Z, staircase, notched rectangle, cut corner or trapezoid. Each is just a starting point; drag its corners to suit. The planner keeps only the whole boards that fit inside the shape (respecting the setback), stamps the chosen pattern on them, and splits each column of screws wherever the shape has a gap, so one column can become several rows. The robot turns beside the last spot of each row and never drives along the roof edge to change rows: the drawing shows a short dashed connector level with that spot, and the next row's first drive is measured from there (often zero, as in the demo pattern). If a row change cannot stay on the roof, or the robot would have to reverse to reach the next row's first spot (as with the middle column of the 5-screw pattern), a warning appears under the summary and in the drawing. The simulated hoppers hold 12 plates and 12 screws, so a roof with more than 12 spots stops with a refill request; refill on the Simulator tab, then press RESOLVED. The simulated drive time is capped at 3 s per move, so long real distances do not take longer in the simulator.
+
 ### Tests tab
 
 Runs the automated tests (section 7) and shows each result.
@@ -128,7 +132,7 @@ Each subsystem has a panel showing what is happening **inside** it while the Sup
 | Status and note | Idle, working (which flowchart), not responding, or aborted. The note says what it is doing right now, for example "Camera: plate has arrived". |
 | Progress bar | How far through the current flowchart step it is |
 | **Flowchart list** | The nodes of that subsystem's flowchart (S1 to S5). The current node is highlighted and pulses. Nodes already visited are shaded. A check shows **YES** or **NO**, a count like ×3 shows how many times a loop went round, and the branch it took is in bold. A node that was never reached stays faint. |
-| Sensors | The values the subsystem would read, such as beam sensors, encoder distance, heading, plates left, tripwire, drill position, torque, and the 10 second torque timer. Good and bad values are colored. |
+| Sensors | The values the subsystem would read, such as crest sensors, encoder distance, heading, plates left, tripwire, drill position, torque, and the 10 second torque timer. Good and bad values are colored. |
 | Path taken | The last visited nodes with their time and result, newest first |
 | Break it | Queue a fault for the subsystem's next command(s). Pick an outcome, how many times, and press **Queue**. **Clear** empties the queue. The faults offered depend on the flowchart (Locomotion has a DRIVE or TURN choice). |
 | Refill supply | On Plate and Screw. Sets the hopper or magazine back to 12. |
@@ -137,9 +141,11 @@ Each subsystem has a panel showing what is happening **inside** it while the Sup
 
 | Fault | What you will see in the flowchart |
 |---|---|
-| `OFF_BEAM` | Beam check NO, limit not used up, relocate, beam check NO again, and so on, until the limit is used up. Wheels stop, then it reports. |
+| `OFF_CREST` | Crest check NO, limit not used up, relocate, crest check NO again, and so on, until the limit is used up. Wheels stop, then it reports. |
 | `CANNOT_REACH_SPOT` | The encoder creeps up but at-the-spot stays NO. It loops twice and then the limit is used up. |
-| `TURN_FAILED` | Turns 90, drives forward, the front sensor never sees the next beam, and the limit is used up. |
+| `NOT_ALIGNED` | Stops at the spot, checks the sideways error (NO), nudges, checks again (NO), and so on three times, then reports. Without a scripted fault, a spot straight after a turn nudges once and then passes. |
+| `OVERSHOT_SPOT` | Drives to the spot, the at-the-spot check says YES, then the past-the-spot check says YES (60 mm past). One attempt only, with no retries. |
+| `TURN_FAILED` | Turns 90, drives forward, the front sensor never sees the next crest, and the limit is used up. |
 | `PLATE_NOT_ARRIVED` | Feed, camera NO, push again, camera NO, push again, camera NO, then the limit is used up. Feed stopped, plate cleared. |
 | `PLACEMENT_REJECTED` | The plate arrives and is released, but the camera and tripwire say NO. |
 | `SCREW_NOT_IN_POSITION` | The screw loads, but the camera does not see both in the right spot. |
@@ -164,7 +170,7 @@ Every fault ends with the subsystem in its **safe state** (wheels stopped, drill
 | Plate fails 3 times | Plate reports a fault on every attempt | The robot stops after the 3rd attempt, red alert, fault log entry. RESOLVED resumes at PLATE. SKIP SPOT moves on. |
 | Torque times out twice, then works | Fastening fails twice | Two retries, third attempt works, no alert (E6) |
 | Screws run out at the first spot | The magazine is emptied and Screw reports `NEED_REFILL` | Stops at once with no retry (E5). Press **Refill supply** on the Screw panel, then RESOLVED. |
-| Robot goes off the beam 3 times | Locomotion reports `OFF_BEAM` every time | Stops. SKIP SPOT is refused (E8). |
+| Robot goes off the crest 3 times | Locomotion reports `OFF_CREST` every time | Stops. SKIP SPOT is refused (E8). |
 | Screw subsystem stops answering | Screw accepts the command and goes quiet | After the timeout the Supervisor sends `CMD_ABORT` and stops with `SUBSYSTEM_UNRESPONSIVE` |
 | Empty, press START yourself | Nothing queued, not started | Your own experiments |
 
@@ -193,7 +199,7 @@ The pattern to look for is one `CMD_START`, then exactly one answer carrying the
 
 ## 7. The automated tests
 
-There are 109 tests in `supervisor/tests/`. They use the same simulator as the dashboard, with no browser. Each one sets up a situation, runs the Supervisor, and checks the result.
+There are 229 tests in `supervisor/tests/`. They use the same simulator as the dashboard, with no browser. Each one sets up a situation, runs the Supervisor, and checks the result.
 
 | File | What it checks |
 |---|---|

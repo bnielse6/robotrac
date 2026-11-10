@@ -1,4 +1,4 @@
-# CLAUDE.md
+﻿# CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -9,12 +9,14 @@ Control system for a roofing robot (MSE 4499 capstone). A Raspberry Pi 5 runs a 
 Python 3.12 is installed per-user and is not on the PATH of terminals opened before the install. If `python` fails, use `%LOCALAPPDATA%\Programs\Python\Python312\python.exe`. All Python commands run from `supervisor/`:
 
 ```
-python -m unittest discover -s tests -t .                 # all tests (109, ~0.1 s)
+python -m unittest discover -s tests -t .                 # all tests (229, ~1 s)
 python -m unittest tests.test_supervisor.Retries -v       # one class
 python -m unittest tests.test_supervisor.Retries.test_three_failures_stop_and_alert   # one test
 python dashboard.py                                       # visual simulator at http://127.0.0.1:8765 (--port N, --no-browser)
 python run_sim.py happy                                   # terminal trace (happy, plate-jam, refill, camera, estop)
 python robot_main.py --port COM5                          # real Supervisor against a real ESP32
+python plan_preview.py --variant eight --pitch 152.4 -o roof.svg   # SVG of a planned roof
+python accuracy_study.py --shape L --variant eight        # can the +/-0.5 mm sideways tolerance be met? (placeholder numbers)
 ```
 
 Firmware, from `firmware/esp32/` (`pio` is not on the PATH, use `python -m platformio`):
@@ -41,6 +43,8 @@ There is no linter configured. There are no firmware tests. A first PlatformIO b
 
 **Firmware.** Non-blocking state machines (`subsystem.h` base class: one reply per command, `makeSafe()` before any reply, abort sends no reply). All hardware goes through `hal.h`, with `hal_sim.cpp` (default, fake robot, optional `params.sim` fault in `CMD_START`) or `hal_esp32.cpp` (every function is a TODO that fails safe). Main loop has a Supervisor-heartbeat watchdog (2 s) that aborts everything. `hal::setStackLight` switches the stack light lamps. Fastening deliberately sends no reply until the drill's retract switch confirms.
 
+**Roof planning.** `roofbot/planner.py` turns a roof (rectangle, drawn outline, or an SVG/DXF schematic read by `schematic.py`) into rows of spots; `layout_to_route` hands the Supervisor a `Route` whose distances are signed (negative = reverse) and whose rows carry the crest count and sideways gap for the turn. The dashboard's Roof plan tab drives all of it. The robot turns at the level of the next strip's first screw (it runs on past its last screw if needed), never along the roof edge, and nothing reverses by default (`turn_style`). `localization.py` models Locomotion's cross-track loop; its gains must equal `firmware/esp32/include/config.h` (a test checks).
+
 ## Things that will bite you
 
 - **Never `Serial.print` text in the firmware.** The port carries only protocol lines.
@@ -48,7 +52,7 @@ There is no linter configured. There are no firmware tests. A first PlatformIO b
 - **Alerts and other messages have delivery latency in `SimWorld`** (5 ms). After an action, `run(0.1)` before reading `world.alerts`.
 - **`SimWorld.start_run()` runs 0.1 s first** because the Supervisor refuses START until it has seen a camera heartbeat.
 - **Port 8765 may hold a stale `dashboard.py`** from an earlier session, serving old code. Kill it before restarting.
-- All timeouts, tolerances and speeds are placeholders except the 10 s torque limit. The firmware compiles but has never run on a board. `serial_link.py` beyond its line framing and `robot_main.py` have never touched hardware.
+- All timeouts, tolerances and speeds are placeholders except the 10 s torque limit. The firmware compiled before 2026-11-10 but has never run on a board, and the changes since (overshoot check, reverse driving, turn data, cross-track steering, the crest renames) have **not been compiled** (no PlatformIO here). `serial_link.py` beyond its line framing and `robot_main.py` have never touched hardware.
 
 ## Documentation
 

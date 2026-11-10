@@ -46,9 +46,10 @@ class HappyPath(unittest.TestCase):
         w.start_run()
         w.run_until(lambda: len(w.locomotion.commands) == 1 and w.locomotion.status == "idle", 60)
         v = w.locomotion.visits
-        self.assertEqual([k for k in ("start", "beam", "at_spot", "limit_spot", "move", "done") if k in v],
-                         ["start", "beam", "at_spot", "limit_spot", "move", "done"])
-        self.assertEqual(v["beam"]["count"], 2)
+        self.assertEqual([k for k in ("start", "crest", "at_spot", "limit_spot", "move", "over", "done") if k in v],
+                         ["start", "crest", "at_spot", "limit_spot", "move", "over", "done"])
+        self.assertEqual(v["over"]["last"], "no")
+        self.assertEqual(v["crest"]["count"], 2)
         self.assertEqual(v["at_spot"]["count"], 2)
         self.assertEqual(v["at_spot"]["last"], "yes")
         self.assertEqual(w.locomotion.sensors["encoder_mm"], 100.0)
@@ -70,10 +71,56 @@ class HappyPath(unittest.TestCase):
         self.assertNotEqual(d["node"], "done")
 
 
+class FinePositioning(unittest.TestCase):
+    """The stop-and-nudge step at each spot, so the sideways error is small when the robot stops."""
+
+    def run_plan(self, rows):
+        w = make_world(rows=rows)
+        for node in (w.plate, w.screw):
+            node.refill(40)
+        w.start_run()
+        self.assertTrue(w.run_until_state(State.RUN_COMPLETE, 900))
+        return w
+
+    def test_every_spot_ends_within_the_accept_limit(self):
+        w = self.run_plan(((3, 300.0, 100.0), (3, 300.0, 0.0), (2, 300.0, 0.0)))
+        log = w.supervisor.spot_log
+        self.assertEqual(len(log), 8)
+        self.assertTrue(all(abs(e["lateral_mm"]) <= 0.2 for e in log), log)
+        self.assertEqual(w.alerts, [])
+
+    def test_a_spot_straight_after_a_turn_gets_nudged(self):
+        # row 2 spot 1 is a zero-length drive: the turn's sideways error is still there, so it nudges
+        w = self.run_plan(((1, 300.0, 100.0), (1, 300.0, 0.0)))
+        drives = w.locomotion.commands_for(Step.DRIVE)
+        self.assertEqual([m.params["distance_mm"] for m in drives], [100.0, 0.0])
+        # the last DRIVE's flow is still on screen: it checked, nudged and checked again
+        self.assertGreaterEqual(w.locomotion.visits["aligned"]["count"], 2)
+        self.assertGreaterEqual(w.locomotion.visits["nudge"]["count"], 1)
+        self.assertEqual(w.locomotion.visits["aligned"]["last"], "yes")
+
+    def test_a_long_drive_needs_no_nudge_because_the_steering_pulled_it_in(self):
+        w = self.run_plan(((1, 300.0, 3000.0),))
+        self.assertNotIn("nudge", w.locomotion.visits)
+
+    def test_it_runs_out_of_tries_and_reports_not_aligned(self):
+        w = make_world(rows=((1, 300.0, 100.0),))
+        w.locomotion.queue(Step.DRIVE, *[fault(FaultCode.NOT_ALIGNED)] * 3)
+        w.start_run()
+        self.assertTrue(w.run_until_state(State.WAIT_OPERATOR, 600))
+        w.run(0.1)
+        self.assertEqual(w.alerts[-1].code, "NOT_ALIGNED")
+        self.assertFalse(w.alerts[-1].params["allow_skip"])           # Locomotion faults have no skip
+        self.assertEqual(len(w.locomotion.commands_for(Step.DRIVE)), 3)   # retried twice, like the others
+        self.assertEqual(w.locomotion.visits["nudge"]["count"], 3)
+        self.assertEqual(w.locomotion.sensors["wheels"], "stopped")
+
+
 class Faults(unittest.TestCase):
     CASES = [
-        ("locomotion", Step.DRIVE, FaultCode.OFF_BEAM),
+        ("locomotion", Step.DRIVE, FaultCode.OFF_CREST),
         ("locomotion", Step.DRIVE, FaultCode.CANNOT_REACH_SPOT),
+        ("locomotion", Step.DRIVE, FaultCode.NOT_ALIGNED),
         ("locomotion", Step.TURN, FaultCode.TURN_FAILED),
         ("plate", Step.PLATE, FaultCode.PLATE_NOT_ARRIVED),
         ("plate", Step.PLATE, FaultCode.PLACEMENT_REJECTED),
@@ -92,6 +139,19 @@ class Faults(unittest.TestCase):
                 w.run(0.1)
                 self.assertEqual(w.alerts[-1].code, code.value)
                 self.assertEqual(len(getattr(w, node).commands_for(step)), 3)
+
+    def test_overshoot_is_reported_after_one_attempt_and_the_wheels_stop(self):
+        w = make_world(rows=((1, 300.0, 100.0),))
+        w.locomotion.queue(Step.DRIVE, fault(FaultCode.OVERSHOT_SPOT))
+        w.start_run()
+        self.assertTrue(w.run_until_state(State.WAIT_OPERATOR, 120))
+        w.run(0.1)
+        self.assertEqual(w.alerts[-1].code, "OVERSHOT_SPOT")
+        self.assertEqual(len(w.locomotion.commands_for(Step.DRIVE)), 1)
+        self.assertEqual(w.locomotion.visits["over"]["last"], "yes")
+        self.assertGreater(w.locomotion.sensors["encoder_mm"], 100.0)   # it did roll past 100 mm
+        self.assertEqual(w.locomotion.sensors["wheels"], "stopped")
+        self.assertFalse(any("timeout" in e for e in w.supervisor.events))
 
     def test_plate_not_arrived_pushes_again_before_giving_up(self):
         w = make_world()
@@ -114,7 +174,7 @@ class Faults(unittest.TestCase):
 
     def test_subsystem_is_in_a_safe_state_when_it_reports_a_fault(self):
         w = make_world()
-        w.locomotion.queue(Step.DRIVE, *[fault(FaultCode.OFF_BEAM)] * 3)
+        w.locomotion.queue(Step.DRIVE, *[fault(FaultCode.OFF_CREST)] * 3)
         w.start_run()
         w.run_until_state(State.WAIT_OPERATOR, 600)
         self.assertEqual(w.locomotion.sensors["wheels"], "stopped")

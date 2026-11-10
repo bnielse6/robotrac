@@ -1,0 +1,178 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8534.4 9088.3" width="845.2" height="900.0">
+<title>Roof plan, 40 spots, 12 rows</title>
+<style>:root { --line-heavy: 29.3; --line-medium: 16.3; --line-light: 8.1; --dash: 61.0 36.6; --text: 104.5px; }
+  .outline { fill: none; stroke: #2b2b2b; stroke-width: var(--line-heavy); }
+  .deck { fill: #e9ecef; }
+  .flute { stroke: #9aa3ad; stroke-width: var(--line-light); }
+  .board { fill: none; stroke: #5b7fa6; stroke-width: var(--line-medium); stroke-dasharray: var(--dash); }
+  .row { fill: none; stroke: #1b6ca8; stroke-width: var(--line-medium); }
+  .turn { fill: none; stroke: #1b6ca8; stroke-width: var(--line-medium); stroke-dasharray: var(--dash); }
+  .spot { fill: #d1495b; stroke: #ffffff; stroke-width: var(--line-light); }
+  .spot.off-crest { fill: #edae49; }
+  .nominal { fill: none; stroke: #7a7a7a; stroke-width: var(--line-light); }
+  .offset { stroke: #7a7a7a; stroke-width: var(--line-light); }
+  .start { fill: #2e933c; }
+  .label { font-family: sans-serif; font-size: var(--text); fill: #1f1f1f; }
+  .small { font-family: sans-serif; font-size: calc(var(--text) * 0.7); fill: #444444; }
+  .arrow { fill: #1b6ca8; }
+  .reverse { fill: none; stroke: #d97706; stroke-width: var(--line-medium); stroke-dasharray: var(--dash); }
+  .arrow-reverse { fill: #d97706; }
+</style>
+<defs><clipPath id="roofshape"><polygon points="3048.0,7924.8 5486.4,7924.8 5486.4,3048.0 7924.8,3048.0 7924.8,609.6 609.6,609.6 609.6,3048.0 3048.0,3048.0"/></clipPath></defs>
+<g id="deck"><polygon class="deck" points="3048.0,7924.8 5486.4,7924.8 5486.4,3048.0 7924.8,3048.0 7924.8,609.6 609.6,609.6 609.6,3048.0 3048.0,3048.0"/></g>
+<g id="flutes" clip-path="url(#roofshape)">
+</g>
+<g id="boards">
+<rect class="board" x="609.6" y="609.6" width="1219.2" height="2438.4"/>
+<rect class="board" x="1828.8" y="609.6" width="1219.2" height="2438.4"/>
+<rect class="board" x="3048.0" y="5486.4" width="1219.2" height="2438.4"/>
+<rect class="board" x="3048.0" y="3048.0" width="1219.2" height="2438.4"/>
+<rect class="board" x="3048.0" y="609.6" width="1219.2" height="2438.4"/>
+<rect class="board" x="4267.2" y="5486.4" width="1219.2" height="2438.4"/>
+<rect class="board" x="4267.2" y="3048.0" width="1219.2" height="2438.4"/>
+<rect class="board" x="4267.2" y="609.6" width="1219.2" height="2438.4"/>
+<rect class="board" x="5486.4" y="609.6" width="1219.2" height="2438.4"/>
+<rect class="board" x="6705.6" y="609.6" width="1219.2" height="2438.4"/>
+</g>
+<g id="outline"><polygon class="outline" points="3048.0,7924.8 5486.4,7924.8 5486.4,3048.0 7924.8,3048.0 7924.8,609.6 609.6,609.6 609.6,3048.0 3048.0,3048.0"/></g>
+<g id="rows">
+<line class="row" id="row-1" x1="914.4" y1="3048.0" x2="914.4" y2="914.4"/>
+<polygon class="arrow" points="855.0,1828.8 973.8,1828.8 914.4,1728.2"/>
+<line class="turn" x1="914.4" y1="914.4" x2="1524.0" y2="914.4"/>
+<line class="row" id="row-2" x1="1524.0" y1="914.4" x2="1524.0" y2="2743.2"/>
+<polygon class="arrow" points="1464.6,1828.8 1583.4,1828.8 1524.0,1929.4"/>
+<line class="turn" x1="1524.0" y1="2743.2" x2="2133.6" y2="2743.2"/>
+<line class="row" id="row-3" x1="2133.6" y1="2743.2" x2="2133.6" y2="914.4"/>
+<polygon class="arrow" points="2074.2,1828.8 2193.0,1828.8 2133.6,1728.2"/>
+<line class="turn" x1="2133.6" y1="914.4" x2="2743.2" y2="914.4"/>
+<line class="row" id="row-4" x1="2743.2" y1="914.4" x2="2743.2" y2="2743.2"/>
+<polygon class="arrow" points="2683.8,1828.8 2802.6,1828.8 2743.2,1929.4"/>
+<line class="turn" x1="2743.2" y1="2743.2" x2="3352.8" y2="2743.2"/>
+<line class="reverse" id="reverse-5" x1="3426.0" y1="2743.2" x2="3426.0" y2="7620.0"/>
+<polygon class="arrow-reverse" points="3366.5,5181.6 3485.4,5181.6 3426.0,5282.2"/>
+<line class="row" id="row-5" x1="3352.8" y1="7620.0" x2="3352.8" y2="914.4"/>
+<polygon class="arrow" points="3293.4,6705.6 3412.2,6705.6 3352.8,6605.0"/>
+<line class="turn" x1="3352.8" y1="914.4" x2="3962.4" y2="914.4"/>
+<line class="row" id="row-6" x1="3962.4" y1="914.4" x2="3962.4" y2="7620.0"/>
+<polygon class="arrow" points="3903.0,1828.8 4021.8,1828.8 3962.4,1929.4"/>
+<line class="turn" x1="3962.4" y1="7620.0" x2="4572.0" y2="7620.0"/>
+<line class="row" id="row-7" x1="4572.0" y1="7620.0" x2="4572.0" y2="914.4"/>
+<polygon class="arrow" points="4512.6,6705.6 4631.4,6705.6 4572.0,6605.0"/>
+<line class="turn" x1="4572.0" y1="914.4" x2="5181.6" y2="914.4"/>
+<line class="row" id="row-8" x1="5181.6" y1="914.4" x2="5181.6" y2="7620.0"/>
+<polygon class="arrow" points="5122.2,1828.8 5241.0,1828.8 5181.6,1929.4"/>
+<line class="turn" x1="5181.6" y1="7620.0" x2="5791.2" y2="7620.0"/>
+<line class="row" id="row-9" x1="5791.2" y1="7620.0" x2="5791.2" y2="914.4"/>
+<polygon class="arrow" points="5731.8,1828.8 5850.6,1828.8 5791.2,1728.2"/>
+<line class="turn" x1="5791.2" y1="914.4" x2="6400.8" y2="914.4"/>
+<line class="row" id="row-10" x1="6400.8" y1="914.4" x2="6400.8" y2="2743.2"/>
+<polygon class="arrow" points="6341.4,1828.8 6460.2,1828.8 6400.8,1929.4"/>
+<line class="turn" x1="6400.8" y1="2743.2" x2="7010.4" y2="2743.2"/>
+<line class="row" id="row-11" x1="7010.4" y1="2743.2" x2="7010.4" y2="914.4"/>
+<polygon class="arrow" points="6951.0,1828.8 7069.8,1828.8 7010.4,1728.2"/>
+<line class="turn" x1="7010.4" y1="914.4" x2="7620.0" y2="914.4"/>
+<line class="row" id="row-12" x1="7620.0" y1="914.4" x2="7620.0" y2="2743.2"/>
+<polygon class="arrow" points="7560.6,1828.8 7679.4,1828.8 7620.0,1929.4"/>
+</g>
+<g id="spots">
+<circle class="spot" id="spot-1-1" cx="914.4" cy="2743.2" r="45.7"/>
+<circle class="spot" id="spot-1-2" cx="914.4" cy="914.4" r="45.7"/>
+<circle class="spot" id="spot-2-1" cx="1524.0" cy="914.4" r="45.7"/>
+<circle class="spot" id="spot-2-2" cx="1524.0" cy="2743.2" r="45.7"/>
+<circle class="spot" id="spot-3-1" cx="2133.6" cy="2743.2" r="45.7"/>
+<circle class="spot" id="spot-3-2" cx="2133.6" cy="914.4" r="45.7"/>
+<circle class="spot" id="spot-4-1" cx="2743.2" cy="914.4" r="45.7"/>
+<circle class="spot" id="spot-4-2" cx="2743.2" cy="2743.2" r="45.7"/>
+<circle class="spot" id="spot-5-1" cx="3352.8" cy="7620.0" r="45.7"/>
+<circle class="spot" id="spot-5-2" cx="3352.8" cy="5791.2" r="45.7"/>
+<circle class="spot" id="spot-5-3" cx="3352.8" cy="5181.6" r="45.7"/>
+<circle class="spot" id="spot-5-4" cx="3352.8" cy="3352.8" r="45.7"/>
+<circle class="spot" id="spot-5-5" cx="3352.8" cy="2743.2" r="45.7"/>
+<circle class="spot" id="spot-5-6" cx="3352.8" cy="914.4" r="45.7"/>
+<circle class="spot" id="spot-6-1" cx="3962.4" cy="914.4" r="45.7"/>
+<circle class="spot" id="spot-6-2" cx="3962.4" cy="2743.2" r="45.7"/>
+<circle class="spot" id="spot-6-3" cx="3962.4" cy="3352.8" r="45.7"/>
+<circle class="spot" id="spot-6-4" cx="3962.4" cy="5181.6" r="45.7"/>
+<circle class="spot" id="spot-6-5" cx="3962.4" cy="5791.2" r="45.7"/>
+<circle class="spot" id="spot-6-6" cx="3962.4" cy="7620.0" r="45.7"/>
+<circle class="spot" id="spot-7-1" cx="4572.0" cy="7620.0" r="45.7"/>
+<circle class="spot" id="spot-7-2" cx="4572.0" cy="5791.2" r="45.7"/>
+<circle class="spot" id="spot-7-3" cx="4572.0" cy="5181.6" r="45.7"/>
+<circle class="spot" id="spot-7-4" cx="4572.0" cy="3352.8" r="45.7"/>
+<circle class="spot" id="spot-7-5" cx="4572.0" cy="2743.2" r="45.7"/>
+<circle class="spot" id="spot-7-6" cx="4572.0" cy="914.4" r="45.7"/>
+<circle class="spot" id="spot-8-1" cx="5181.6" cy="914.4" r="45.7"/>
+<circle class="spot" id="spot-8-2" cx="5181.6" cy="2743.2" r="45.7"/>
+<circle class="spot" id="spot-8-3" cx="5181.6" cy="3352.8" r="45.7"/>
+<circle class="spot" id="spot-8-4" cx="5181.6" cy="5181.6" r="45.7"/>
+<circle class="spot" id="spot-8-5" cx="5181.6" cy="5791.2" r="45.7"/>
+<circle class="spot" id="spot-8-6" cx="5181.6" cy="7620.0" r="45.7"/>
+<circle class="spot" id="spot-9-1" cx="5791.2" cy="2743.2" r="45.7"/>
+<circle class="spot" id="spot-9-2" cx="5791.2" cy="914.4" r="45.7"/>
+<circle class="spot" id="spot-10-1" cx="6400.8" cy="914.4" r="45.7"/>
+<circle class="spot" id="spot-10-2" cx="6400.8" cy="2743.2" r="45.7"/>
+<circle class="spot" id="spot-11-1" cx="7010.4" cy="2743.2" r="45.7"/>
+<circle class="spot" id="spot-11-2" cx="7010.4" cy="914.4" r="45.7"/>
+<circle class="spot" id="spot-12-1" cx="7620.0" cy="914.4" r="45.7"/>
+<circle class="spot" id="spot-12-2" cx="7620.0" cy="2743.2" r="45.7"/>
+</g>
+<g id="labels">
+<circle class="start" cx="914.4" cy="3048.0" r="64.0"/>
+<text class="small" x="1005.8" y="3152.5">start</text>
+<text class="label" text-anchor="middle" x="914.4" y="800.8">R1</text>
+<text class="label" text-anchor="middle" x="1524.0" y="2930.0">R2</text>
+<text class="label" text-anchor="middle" x="2133.6" y="800.8">R3</text>
+<text class="label" text-anchor="middle" x="2743.2" y="2930.0">R4</text>
+<text class="label" text-anchor="middle" x="3352.8" y="800.8">R5</text>
+<text class="label" text-anchor="middle" x="3962.4" y="7806.8">R6</text>
+<text class="label" text-anchor="middle" x="4572.0" y="800.8">R7</text>
+<text class="label" text-anchor="middle" x="5181.6" y="7806.8">R8</text>
+<text class="label" text-anchor="middle" x="5791.2" y="800.8">R9</text>
+<text class="label" text-anchor="middle" x="6400.8" y="2930.0">R10</text>
+<text class="label" text-anchor="middle" x="7010.4" y="800.8">R11</text>
+<text class="label" text-anchor="middle" x="7620.0" y="2930.0">R12</text>
+<text class="small" x="978.4" y="2706.6">1</text>
+<text class="small" x="978.4" y="877.8">2</text>
+<text class="small" x="1588.0" y="877.8">1</text>
+<text class="small" x="1588.0" y="2706.6">2</text>
+<text class="small" x="2197.6" y="2706.6">1</text>
+<text class="small" x="2197.6" y="877.8">2</text>
+<text class="small" x="2807.2" y="877.8">1</text>
+<text class="small" x="2807.2" y="2706.6">2</text>
+<text class="small" x="3416.8" y="7583.4">1</text>
+<text class="small" x="3416.8" y="5754.6">2</text>
+<text class="small" x="3416.8" y="5145.0">3</text>
+<text class="small" x="3416.8" y="3316.2">4</text>
+<text class="small" x="3416.8" y="2706.6">5</text>
+<text class="small" x="3416.8" y="877.8">6</text>
+<text class="small" x="4026.4" y="877.8">1</text>
+<text class="small" x="4026.4" y="2706.6">2</text>
+<text class="small" x="4026.4" y="3316.2">3</text>
+<text class="small" x="4026.4" y="5145.0">4</text>
+<text class="small" x="4026.4" y="5754.6">5</text>
+<text class="small" x="4026.4" y="7583.4">6</text>
+<text class="small" x="4636.0" y="7583.4">1</text>
+<text class="small" x="4636.0" y="5754.6">2</text>
+<text class="small" x="4636.0" y="5145.0">3</text>
+<text class="small" x="4636.0" y="3316.2">4</text>
+<text class="small" x="4636.0" y="2706.6">5</text>
+<text class="small" x="4636.0" y="877.8">6</text>
+<text class="small" x="5245.6" y="877.8">1</text>
+<text class="small" x="5245.6" y="2706.6">2</text>
+<text class="small" x="5245.6" y="3316.2">3</text>
+<text class="small" x="5245.6" y="5145.0">4</text>
+<text class="small" x="5245.6" y="5754.6">5</text>
+<text class="small" x="5245.6" y="7583.4">6</text>
+<text class="small" x="5855.2" y="2706.6">1</text>
+<text class="small" x="5855.2" y="877.8">2</text>
+<text class="small" x="6464.8" y="877.8">1</text>
+<text class="small" x="6464.8" y="2706.6">2</text>
+<text class="small" x="7074.4" y="2706.6">1</text>
+<text class="small" x="7074.4" y="877.8">2</text>
+<text class="small" x="7684.0" y="877.8">1</text>
+<text class="small" x="7684.0" y="2706.6">2</text>
+<text class="label" x="609.6" y="8962.9">custom shape, bounding box 7.32 x 7.32 m, demo variant, crests: not set, 10 boards</text>
+<text class="small" x="609.6" y="9067.4">red = on crest, amber = offset from crest (grey ring = spec position), dashed = board, arrows = travel, orange dashed = reverse</text>
+<text class="small" style="fill:#b45309" x="609.6" y="8837.5">Warning: The turn from row 8 to row 9 (level with y = 305 mm) does not stay on the roof.</text>
+</g>
+</svg>

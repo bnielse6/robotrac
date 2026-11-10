@@ -37,9 +37,9 @@ Fields that do not apply are left out. Unknown fields are ignored, so they can b
 | `SKIP_SPOT` | Operator to SUP | | Only in WAIT_OPERATOR. Refused for locomotion and camera faults, and for unresponsive subsystems. |
 | `ESTOP` | E-stop to SUP | | Any state. Hardware also cuts power. |
 | `RESET` | Operator to SUP | | From ESTOP or RUN_COMPLETE back to IDLE |
-| `CMD_START` | SUP to subsystem | `id` `row` `spot` `attempt` `step` | `params`: DRIVE has `distance_mm`, TURN has `direction` (`RIGHT` or `LEFT`) |
+| `CMD_START` | SUP to subsystem | `id` `row` `spot` `attempt` `step` | `params`: DRIVE has `distance_mm`, **signed: negative means reverse**. TURN has `direction` (`RIGHT` or `LEFT`) and, when the route map knows them, `crests` (how many crests to cross), `distance_mm` (the sideways gap to the next row) and `run_out_mm` (drive on this far past the last spot before turning, so the next strip's first screw is ahead of the robot) |
 | `CMD_ABORT` | SUP to subsystem | | Stop safely now: wheels stopped, plate released, drill retracted. No reply needed. |
-| `DONE` | Subsystem to SUP | `ref` | Step finished and the subsystem is in a safe state |
+| `DONE` | Subsystem to SUP | `ref` | Step finished and the subsystem is in a safe state. A DRIVE `DONE` from Locomotion may carry `params.lateral_mm` (the crest sensors' lateral offset of the screw line from the crest centre, positive = right) and `params.along_mm` (encoder minus target, positive = past the spot). The Supervisor keeps them in `spot_log`; it does not act on them |
 | `FAULT` | Subsystem to SUP | `ref` `code` | Step failed. Subsystem is already in a safe state. |
 | `NEED_REFILL` | Plate or Screw to SUP | `ref`, `params.item` | `item` is `PLATES` or `SCREWS`. No retry. |
 | `ALERT` | SUP to operator | `code` | `params`: `subsystem`, `allow_skip`, `detail`. `row` and `spot` are included. |
@@ -49,7 +49,7 @@ Fields that do not apply are left out. Unknown fields are ignored, so they can b
 | `QUERY` | Plate, Screw or Fastening to CAMERA | `id`, `params.question` | A question for the camera. `question` is `PLATE_ARRIVED`, `PLACEMENT_OK`, `PLATE_SCREW_OK` or `PHOTO_OK` (take the photo and say if it is accepted). `row` and `spot` are included. The Pi, not the Supervisor, answers it. |
 | `ANSWER` | CAMERA to the asking subsystem | `ref`, `params.ok` | `ref` is the `id` of the `QUERY`. `ok` is true or false. |
 
-`params` can also carry `sim` on a `CMD_START` (for example `"sim":"OFF_BEAM"`). Only the simulated-hardware firmware reads it. The Supervisor never sends it.
+`params` can also carry `sim` on a `CMD_START` (for example `"sim":"OFF_CREST"`). Only the simulated-hardware firmware reads it. The Supervisor never sends it.
 
 ## Stack light
 
@@ -66,7 +66,7 @@ If the ESP32 stops hearing the Supervisor heartbeat (the same 2 s watchdog that 
 
 ## Fault codes
 
-`PLATE_NOT_ARRIVED`, `PLACEMENT_REJECTED`, `SCREW_NOT_IN_POSITION`, `TORQUE_TIMEOUT`, `PHOTO_REJECTED`, `OFF_BEAM`, `CANNOT_REACH_SPOT`, `TURN_FAILED`, `CAMERA_FEED_LOST`, `NEED_REFILL`, `ESTOP`, and `SUBSYSTEM_UNRESPONSIVE`.
+`PLATE_NOT_ARRIVED`, `PLACEMENT_REJECTED`, `SCREW_NOT_IN_POSITION`, `TORQUE_TIMEOUT`, `PHOTO_REJECTED`, `OFF_CREST`, `CANNOT_REACH_SPOT`, `OVERSHOT_SPOT`, `NOT_ALIGNED`, `TURN_FAILED`, `CAMERA_FEED_LOST`, `NEED_REFILL`, `ESTOP`, and `SUBSYSTEM_UNRESPONSIVE`.
 
 The first eight, plus `NEED_REFILL`, come from the guide (E1 to E8, and E3 and E5). `CAMERA_FEED_LOST` is E9 and `ESTOP` is E10. A subsystem sends only `FAULT` codes from its own row in section 7 of the guide. **`SUBSYSTEM_UNRESPONSIVE` is new**: the Supervisor raises it itself when a command times out or a subsystem reboots mid-step. It has no skip.
 
@@ -117,5 +117,12 @@ These were added because the guide has no answer to them yet. Update the guide i
 - `LIGHT`, the stack light (section 3.8 of the guide), and the ESP32 showing flashing amber if the Supervisor goes quiet.
 - `QUERY` and `ANSWER`, because the camera is on the Pi and the subsystems that use it are on the ESP32. The guide draws these as subsystem-to-camera arrows but does not say how they cross the link. The simulator does not model them: its detailed subsystems ask the camera internally.
 - Locomotion faults are retried by the Supervisor (E8 says relocate up to N). The Supervisor state chart does not draw a retry loop on DRIVE_TO_SPOT or TURN_TO_NEXT_ROW.
+- `NOT_ALIGNED` is a new Locomotion fault: after stopping at a spot, the sideways error (the average of several crest array readings) was still outside the accept limit after the allowed nudges. It is retried like the other Locomotion faults (a retry repeats the drive, which realigns), then stops for the operator with no skip. The `lateral_mm` on a drive's `DONE` is that averaged reading after any nudges.
+- `OVERSHOT_SPOT` is a new Locomotion fault (the robot stopped past the spot by more than a limit). It is never retried, unlike the other Locomotion faults, because a retry would repeat the whole drive from where the robot now is, past the spot, so it would end up even further past. (The robot can reverse, so an automatic back-up correction is possible later.) The Supervisor stops at once, the alert says to put the robot back where the drive started, and RESOLVED repeats the drive in full. It has no skip.
+- `distance_mm` on a DRIVE is signed (negative = reverse), because the robot can back up. The planner only produces a negative distance when asked to turn at the last screw (`turn_style` last-spot); by default every strip runs forwards.
+- A TURN may carry `run_out_mm`: Locomotion first drives on that far, then turns. It is how every strip covers the same stretch, so nothing reverses.
+- A TURN may carry `crests` and `distance_mm` (from the planned crest positions) so Locomotion can check its crest count against its encoder. Without them it falls back to the old minimum-distance check.
+- A DRIVE `DONE` may carry `lateral_mm` and `along_mm`, measured at the stop, for the accuracy record.
+- The crest sensor array's error reaches Locomotion inside the ESP32 (its own hardware layer), never as a message. Locomotion runs the steering loop; the Pi only sees the summary above.
 - `START` is refused when the camera feed is not usable.
 - Skip is also refused for `SUBSYSTEM_UNRESPONSIVE`, because the robot's state is not known.

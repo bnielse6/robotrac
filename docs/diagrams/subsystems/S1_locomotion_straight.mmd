@@ -4,15 +4,21 @@ flowchart TD
   classDef bad fill:#fde8e8,stroke:#b33
   classDef act fill:#e8f0fb,stroke:#1f3a5f
   A([CMD_START: drive to the next spot<br/>distance from the route map]):::start
-  B{On the beam?<br/>beam sensors}
+  B{On the crest?<br/>crest sensors}
   C{Time limit<br/>used up?}
-  D[Relocate to the beam]:::act
+  D[Relocate to the crest]:::act
   E{At the right spot?<br/>encoder + route map}
   F{Time limit<br/>used up?}
   G[Keep moving to the spot]:::act
-  H([DONE: stop at the spot]):::ok
-  X1([FAULT: OFF_BEAM]):::bad
+  P{Past the spot by<br/>more than the limit?<br/>encoder}
+  H([DONE: stop at the spot<br/>reports the sideways error]):::ok
+  AL{Sideways error within<br/>the limit?<br/>average of several readings}
+  LA{Tried too many<br/>times?}
+  NU[Nudge sideways<br/>by the error]:::act
+  X1([FAULT: OFF_CREST]):::bad
   X2([FAULT: CANNOT_REACH_SPOT]):::bad
+  X3([FAULT: OVERSHOT_SPOT<br/>no retry]):::bad
+  X4([FAULT: NOT_ALIGNED]):::bad
   A --> B
   B -- NO --> C
   C -- NO --> D --> B
@@ -21,4 +27,10 @@ flowchart TD
   E -- NO --> F
   F -- NO --> G --> B
   F -- YES, wheels stop --> X2
-  E -- YES --> H
+  E -- YES, wheels stop --> P
+  P -- NO --> AL
+  AL -- YES --> H
+  AL -- NO --> LA
+  LA -- NO --> NU --> AL
+  LA -- YES, wheels stop --> X4
+  P -- YES --> X3

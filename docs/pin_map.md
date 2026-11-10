@@ -16,8 +16,8 @@ Type: DI digital input, DO digital output, PWM, ADC analog input, ENC quadrature
 | Locomotion | same | Left and right motor direction (depends on the driver chosen) | DO | 2 | no | | high source |
 | Locomotion | `encoderMm`, `resetEncoder` | Wheel encoders, two wheels for differential drive | ENC | 4 | only A and B (one encoder) | | **high** |
 | Locomotion | `headingDeg`, `resetHeading` | IMU on the shared I2C bus | I2C | 0 extra | no | | medium |
-| Locomotion | `onBeam` | Cross-track sensor array (diamond, 4 sensors). 4 pins if analog, 0 extra if on I2C | ADC | 4 | one pin (`PIN_BEAM_SENSOR`) | | **high** |
-| Locomotion | `frontSensorOnBeam` | Front sensor | DI | 1 | yes | | medium |
+| Locomotion | `onCrest` | Cross-track sensor array (diamond, 4 sensors). 4 pins if analog, 0 extra if on I2C | ADC | 4 | one pin (`PIN_CREST_SENSOR`) | | **high** |
+| Locomotion | `frontSensorOnCrest` | Front sensor | DI | 1 | yes | | medium |
 | Plate | `platesAvailable` | Plate supply sensor | DI | 1 | yes | | low |
 | Plate | `tripwirePlateDetected` | Tripwire sensor | DI | 1 | yes | | low |
 | Plate | `feedPlate`, `stopFeed` | Feed actuator | DO | 1 | yes | | medium |

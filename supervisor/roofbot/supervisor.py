@@ -50,6 +50,16 @@ STATE_LIGHT = {
 }
 
 
+# Faults that are never retried, with the instruction shown to the operator. A retry repeats the
+# whole drive from where the robot now is, which after OVERSHOT_SPOT is already past the spot, so it
+# would end up even further past. (The robot can reverse, so a smarter automatic back-up is possible
+# later; for now a person puts it back.)
+NO_RETRY_FAULTS = {
+    FaultCode.OVERSHOT_SPOT: "The robot went past the spot. Put it back where this drive started, "
+                             "then press RESOLVED.",
+}
+
+
 @dataclass
 class Config:
     max_retries: int = 2  # N in the guide. A step runs at most 1 + N times.
@@ -100,6 +110,7 @@ class Supervisor:
         self.resume_state: Optional[State] = None
         self.active_fault: Optional[FaultRecord] = None
         self.allow_skip = False
+        self.spot_log: list[dict] = []   # per spot: lateral_mm and along_mm as measured by Locomotion
         self.fault_log: list[FaultRecord] = []
         self.skipped_spots: list[tuple[int, int]] = []
 
@@ -182,12 +193,22 @@ class Supervisor:
         self.pending = None
 
         if msg.type is MsgType.DONE:
+            if p.step is Step.DRIVE and ("lateral_mm" in msg.params or "along_mm" in msg.params):
+                # what Locomotion measured at the stop: for the accuracy record, not enforced here
+                self.spot_log.append({"row": self.row, "spot": self.spot,
+                                      "lateral_mm": msg.params.get("lateral_mm"),
+                                      "along_mm": msg.params.get("along_mm")})
             self._advance()
         elif msg.type is MsgType.NEED_REFILL:
             self._stop(p.node, FaultCode.NEED_REFILL, allow_skip=True, detail=str(msg.params.get("item")))
         else:  # FAULT
             code = FaultCode(msg.code)
-            if self.retries < self.config.max_retries:
+            if code in NO_RETRY_FAULTS:
+                # Repeating the drive would start from past the spot and end further past it. Stop now
+                # and let the operator put the robot back, then press RESOLVED.
+                self._stop(p.node, code, allow_skip=p.node is not Node.LOCOMOTION,
+                           detail=NO_RETRY_FAULTS[code])
+            elif self.retries < self.config.max_retries:
                 self.retries += 1
                 self._log(f"{p.node.value} {code.value}, retry {self.retries} of {self.config.max_retries}")
                 self._issue_command()
@@ -300,6 +321,7 @@ class Supervisor:
             params["distance_mm"] = self.route.distance_to_spot_mm(self.row, self.spot)
         elif step is Step.TURN:
             params["direction"] = self.route.turn_direction(self.row)
+            params.update(self.route.turn_params(self.row))
         self._send(Message(MsgType.CMD_START, Node.SUPERVISOR, node, id=self.pending.msg_id,
                            row=self.row, spot=self.spot, attempt=self.retries + 1,
                            step=step, params=params))

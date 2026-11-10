@@ -47,17 +47,17 @@ All diagrams are in the `diagrams/` folder next to this file. The `.mmd` files a
 
 ## 1. What the robot is doing
 
-The robot covers the roof like mowing a lawn. It starts at the **bottom left** of the roof and drives in a **straight line along a row**, stopping at each **spot** to fasten. At the end of the row it **turns onto the next beam** and drives back down it in the opposite direction, and repeats until all rows are done. The rows, the number of spots in each, and the distances between them come from a **route map** programmed into the robot.
+The robot covers the roof like mowing a lawn. It starts at the **bottom left** of the roof and drives in a **straight line along a row**, stopping at each **spot** to fasten. At the end of the row it **turns onto the next crest** and drives back down it in the opposite direction, and repeats until all rows are done. The rows, the number of spots in each, and the distances between them come from a **route map** programmed into the robot.
 
 At each spot it completes three jobs, in order, **before it moves on**:
 
 | Step | Subsystem | What happens | How it is checked |
 |---|---|---|---|
-| 0 | Locomotion (straight) | Drive along the row to the next spot | Beam sensors confirm it is on the beam; position confirms it is at the right spot |
+| 0 | Locomotion (straight) | Drive along the row to the next spot | Crest sensors confirm it is on the crest; position confirms it is at the right spot |
 | 1 | Plate | Feed a plate toward fastening position, push it into place, then release it | **Live camera** confirms the plate arrived; live camera + tripwire approve the placement |
 | 2 | Screw | Load a screw into fastening position | **Live camera sees the plate and screw together** and confirms both are in the right spot, before fastening starts |
 | 3 | Fastening | Drill the screw in | Torque reaches the right value within 10 seconds, then the live camera takes a photo that must be accepted |
-| 4 | Locomotion (turn), **only at the end of a row** | Turn 90 right, drive forward until the front sensor is on the next beam, encoder approves, turn 90 right again (odd rows). On even rows both turns are left. | Front sensor + encoder |
+| 4 | Locomotion (turn), **only at the end of a row** | (First, if the route map says so, drive on past the last screw to the level where the next strip's first screw is.) Turn 90 right, drive forward until the front sensor has counted the planned number of crests and the encoder agrees with the planned row gap, turn 90 right again (odd rows). On even rows both turns are left. | Front sensor + encoder |
 
 After step 3 the Supervisor checks the row:
 - **More spots in this row (per the route map):** go back to step 0 and drive straight to the next spot.
@@ -97,7 +97,7 @@ Each subsystem is a self-contained unit that does **one job** when the Superviso
 | Subsystem | Its job | What it uses | What it can report |
 |---|---|---|---|
 | **Supervisor** | Runs the whole sequence, holds the route map, handles faults and the operator | Route map, fault log, messages from everything | Sends commands and alerts |
-| **Locomotion** | Drive along a row, turn at the end of a row | Beam sensors, front sensor, encoders | `DONE`, `OFF_BEAM`, `CANNOT_REACH_SPOT`, `TURN_FAILED` |
+| **Locomotion** | Drive along a row, turn at the end of a row | Crest sensors, front sensor, encoders | `DONE`, `OFF_CREST`, `CANNOT_REACH_SPOT`, `OVERSHOT_SPOT`, `NOT_ALIGNED`, `TURN_FAILED` |
 | **Plate** | Put a plate in place | Plate sensors (supply), tripwire, live camera | `DONE`, `NEED_REFILL`, `PLATE_NOT_ARRIVED`, `PLACEMENT_REJECTED` |
 | **Screw** | Load a screw next to the plate | Screw sensor (supply), live camera | `DONE`, `NEED_REFILL`, `SCREW_NOT_IN_POSITION` |
 | **Fastening** | Drive the screw in and photograph it | Torque sensor, live camera | `DONE`, `TORQUE_TIMEOUT`, `PHOTO_REJECTED` |
@@ -130,16 +130,16 @@ The Supervisor is the brain. It is the only part that knows the whole plan.
 
 Locomotion moves the robot. It has two jobs: driving straight along a row, and turning onto the next row. The route map tells it how far to go and which way to turn.
 
-**Drive straight to the next spot.** It checks it is on the beam, then drives until the encoder and route map say it is at the right spot. If it drifts off the beam it tries to relocate. If a time limit runs out at either point, it stops and reports a fault.
+**Drive straight to the next spot.** (A negative distance means reverse. While driving, Locomotion steers to keep the screw line over the crest centre, using the crest sensor array directly.) It checks it is on the crest, then drives until the encoder and route map say it is at the right spot. If it drifts off the crest it tries to relocate. If a time limit runs out at either point, it stops and reports a fault. Once it reaches the spot it stops the wheels and checks it has not gone past by more than a limit; if it has, it reports `OVERSHOT_SPOT`. Then comes **fine positioning**: standing still, it averages several readings of the crest sensor array; if the sideways error is outside a small accept limit it nudges sideways by that error and reads again, and after a few tries it reports `NOT_ALIGNED`. This matters most right after a turn, when the robot is a few millimetres off the new crest and has had no distance to steer it back.
 
 ![Locomotion, driving straight](diagrams/subsystems/S1_locomotion_straight.png)
 
-**Turn to the next row (only at the end of a row).** Turn 90, drive forward until the front sensor is on the next beam, check the encoder position, then turn 90 again in the same direction. The directions alternate: right twice, then left twice, and so on.
+**Turn to the next row (only at the end of a row).** Turn 90, drive forward until the front sensor has counted the planned number of crests, check the encoder against the planned row gap (a mismatch means the wrong crest was counted, so the turn fails), then turn 90 again in the same direction. The directions alternate: right twice, then left twice, and so on.
 
 ![Locomotion, turning](diagrams/subsystems/S2_locomotion_turn.png)
 
-- **Sensors:** beam sensors (on the beam?), front sensor (on the next beam?), encoders (distance and turn angle).
-- **Faults:** `OFF_BEAM`, `CANNOT_REACH_SPOT`, `TURN_FAILED`. These have no skip option.
+- **Sensors:** crest sensors (on the crest?), front sensor (on the next crest?), encoders (distance and turn angle).
+- **Faults:** `OFF_CREST`, `CANNOT_REACH_SPOT`, `OVERSHOT_SPOT`, `NOT_ALIGNED`, `TURN_FAILED`. These have no skip option.
 - **Handoff:** after straight `DONE`, the Supervisor starts Plate. After turn `DONE`, the Supervisor drives straight on the new row.
 
 ### 3.3 Plate
@@ -258,7 +258,7 @@ Proposed meaning (to be confirmed, see section 10). If the Supervisor stops talk
 | # | Who | What happens | Message |
 |---|---|---|---|
 | 1 | Supervisor to Locomotion | Drive to the next spot | `CMD_START` |
-| 2 | Locomotion | Check on the beam, drive to the spot, stop | `DONE` |
+| 2 | Locomotion | Check on the crest, drive to the spot, stop | `DONE` |
 | 3 | Supervisor to Plate | Place a plate | `CMD_START` |
 | 4 | Plate with camera | Feed plate, camera confirms arrival, release, camera + tripwire approve placement | `DONE` |
 | 5 | Supervisor to Screw | Load a screw | `CMD_START` |
@@ -271,7 +271,7 @@ If every step goes well, step 9 sends the robot back to step 1 for the next spot
 
 ### 4.5 End of a row
 
-When the route map says the row is finished, the Supervisor sends `CMD_START` (turn to next row) to Locomotion. Locomotion turns, drives onto the next beam, turns again, and reports `DONE`. The robot is now facing the other way on the next row, and the Supervisor continues from step 1 above. The turns are right twice, then left twice on the next row, alternating.
+When the route map says the row is finished, the Supervisor sends `CMD_START` (turn to next row) to Locomotion. Locomotion turns, drives onto the next crest, turns again, and reports `DONE`. The robot is now facing the other way on the next row, and the Supervisor continues from step 1 above. The turns are right twice, then left twice on the next row, alternating.
 
 ### 4.6 When something goes wrong
 
@@ -283,7 +283,7 @@ A failed step is retried up to 2 times in place. If it still fails, or something
 |---|---|
 | Retries per step (N) | 2 |
 | Torque reached (Fastening) | 10 seconds |
-| Relocate to the beam, reach the spot, finish a turn (Locomotion) | Not set yet, to be found in testing |
+| Relocate to the crest, reach the spot, finish a turn (Locomotion) | Not set yet, to be found in testing |
 | Plate arrival and screw position checks | Not set yet, to be found in testing (depends on the camera delay) |
 
 ---
@@ -307,7 +307,7 @@ Read it top to bottom. This is the mowing-lawn loop.
 3. **PLATE, SCREW, FASTEN.** At the spot it does the three jobs in order, each confirmed by the live camera. Each one must finish before the next starts.
 4. **The diamond (row check).** After fastening, the Supervisor asks "where am I in the row?" using the route map:
    - *More spots in this row:* go back to DRIVE_TO_SPOT (the loop on the right side).
-   - *End of the row, more rows left:* go to TURN_TO_NEXT_ROW, then DRIVE_TO_SPOT on the next beam, now heading the other way.
+   - *End of the row, more rows left:* go to TURN_TO_NEXT_ROW, then DRIVE_TO_SPOT on the next crest, now heading the other way.
    - *Last spot of the last row:* go to RUN_COMPLETE, where the operator reviews the log.
 
 #### Full chart, with faults
@@ -319,7 +319,7 @@ The full chart is the same loop plus three extra behaviours. Look for these:
 | Look for | What it means |
 |---|---|
 | **A small arrow looping back onto PLATE, SCREW or FASTEN**, labelled "FAULT, retries < N" | The step failed, so the robot **retries it in place**. It does not move. |
-| **Arrows going down into WAIT_OPERATOR** | The robot **stops**. This happens when retries are used up, when plates or screws run out (`NEED_REFILL`), when the **camera feed is lost**, or when locomotion faults (off the beam, cannot reach the spot, turn failed). The operator screen shows the spot, the subsystem, the fault code, and the live camera feed. |
+| **Arrows going down into WAIT_OPERATOR** | The robot **stops**. This happens when retries are used up, when plates or screws run out (`NEED_REFILL`), when the **camera feed is lost**, or when locomotion faults (off the crest, cannot reach the spot, turn failed). The operator screen shows the spot, the subsystem, the fault code, and the live camera feed. |
 | **Arrows leaving WAIT_OPERATOR** | The operator decides. **RESOLVED** sends the robot back to the exact step that stopped (one arrow per step). **SKIP SPOT** sends it to the row check and is the last resort. |
 | **The ESTOP box, outside the pink RUNNING box** | The E-stop can be pressed from anywhere inside RUNNING. Everything stops, and only a manual reset returns the robot to IDLE. |
 
@@ -359,13 +359,13 @@ One safety rule applies to every subsystem: **before it reports a FAULT, it retu
 | E5 | Out of screws | Screw | `NEED_REFILL` | None | Stop and alert |
 | E6 | Torque not reached in 10 seconds | Fastening | `TORQUE_TIMEOUT` | Drive screw again | Stop and alert |
 | E7 | Photo rejected | Fastening | `PHOTO_REJECTED` | Retake photo | Stop and alert |
-| E8 | Lost the beam, or cannot reach the spot or finish the turn | Locomotion | `OFF_BEAM`, `CANNOT_REACH_SPOT`, `TURN_FAILED` | Relocate | Stop and alert (no skip) |
+| E8 | Lost the crest, or cannot reach the spot or finish the turn | Locomotion | `OFF_CREST`, `CANNOT_REACH_SPOT`, `OVERSHOT_SPOT`, `NOT_ALIGNED`, `TURN_FAILED` | Relocate (not for `OVERSHOT_SPOT`) | Stop and alert (no skip) |
 | E9 | Live camera feed lost, lens blocked, or image too dark (light failed) | Camera (watched by the Supervisor) | `CAMERA_FEED_LOST` | None | Stop and alert (no skip) |
 | E10 | Emergency stop | Any | `ESTOP` | None | Everything stops. Manual reset |
 
 Every stop in this table (E1 to E9) turns the stack light to **flashing amber**, and E10 turns it **red**, so the operator can see from a distance that the robot needs them (section 3.8).
 
-In E1 to E7 the operator can press **RESOLVED** (resume) or **SKIP SPOT** (last resort). E8 has no skip, because every later spot depends on the robot being on the beam. E9 has no skip, because nothing can be verified without the camera.
+In E1 to E7 the operator can press **RESOLVED** (resume) or **SKIP SPOT** (last resort). E8 has no skip, because every later spot depends on the robot being on the crest. E9 has no skip, because nothing can be verified without the camera.
 
 ---
 
@@ -429,9 +429,9 @@ In E1 to E7 the operator can press **RESOLVED** (resume) or **SKIP SPOT** (last 
 
 ### E8: Locomotion fault
 
-**When:** the robot is driving along a row or turning onto the next row and cannot stay on the beam, cannot reach the right spot, or the turn fails (front sensor not on the next beam, or the encoder does not approve).
-**Robot does:** stops the wheels, tries to relocate to the beam (up to N), then stops and alerts.
-**Operator does:** places the robot back on the beam, then presses RESOLVED. **There is no skip here.**
+**When:** the robot is driving along a row or turning onto the next row and cannot stay on the crest, cannot reach the right spot, or the turn fails (front sensor not on the next crest, or the encoder does not approve).
+**Robot does:** stops the wheels, tries to relocate to the crest (up to N), then stops and alerts. **Exception, `OVERSHOT_SPOT`:** the robot rolled past the spot. A retry would repeat the whole drive from where the robot now is, past the spot, so it would end up even further past. It stops and alerts at once, with no retries.
+**Operator does:** places the robot back on the crest, then presses RESOLVED. After `OVERSHOT_SPOT`, puts the robot back where the drive started (the drive is repeated in full). **There is no skip here.**
 
 ![E8](diagrams/errors/E8_locomotion_fault.png)
 
@@ -459,7 +459,7 @@ In E1 to E7 the operator can press **RESOLVED** (resume) or **SKIP SPOT** (last 
 |---|---|
 | Turn direction | Turn right twice at the end of the first row, then left twice at the end of the next, alternating every row. |
 | Start position | Bottom left or bottom right of the roof. The robot starts there and follows the programmed path. |
-| End-of-row detection | The **route map** programmed into the robot gives the number of spots in each row and the distances between them. The Supervisor counts spots against it, so no extra end-of-beam sensor is needed. |
+| End-of-row detection | The **route map** programmed into the robot gives the number of spots in each row and the distances between them. The Supervisor counts spots against it, so no extra end-of-crest sensor is needed. |
 | N (retries) | **2**, for now. |
 | Torque time limit | **10 seconds**, for now. To be tested and tuned. |
 | Skip after a rejected photo (E7) | Acceptable, as long as it is logged. |

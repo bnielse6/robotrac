@@ -18,7 +18,9 @@ struct Message {
   int32_t spot = -1;
   int32_t attempt = -1;
   char step[8] = "";     // DRIVE, TURN, PLATE, SCREW, FASTEN
-  float distanceMm = 0;  // params.distance_mm  (DRIVE)
+  float distanceMm = 0;  // params.distance_mm  (DRIVE: signed, negative = reverse. TURN: sideways gap to the next row)
+  float runOutMm = 0;    // params.run_out_mm   (TURN): drive on this far past the last spot before turning
+  int32_t crests = 0;    // params.crests       (TURN): crests to cross, 0 when the route map does not say
   char direction[8] = "";// params.direction    (TURN): RIGHT or LEFT
   char sim[24] = "";     // params.sim          (development only, picks a fault in the simulated hardware)
   bool ok = false;       // params.ok           (ANSWER)
@@ -34,6 +36,9 @@ bool parse(const char* line, Message& out);
 // Messages the board sends. All of them end with a newline and fit in MAX_LINE_BYTES.
 void sendReady();
 void sendDone(const char* node, const Message& cmd);
+// A DONE for a drive that also carries params.lateral_mm (crest sensors) and params.along_mm (encoder
+// minus target, positive = past the spot), for the Pi's accuracy record.
+void sendDoneWithError(const char* node, const Message& cmd, float lateralMm, float alongMm);
 void sendFault(const char* node, const Message& cmd, const char* code);
 void sendNeedRefill(const char* node, const Message& cmd, const char* item);  // "PLATES" or "SCREWS"
 void sendQuery(const char* node, int32_t queryId, const char* question, const Message& cmd);
