@@ -1,0 +1,5 @@
+3DX_Ruland_Supplier_1: Ruland
+3DX_Ruland_Supplier: Ruland Manufacturing Co., Inc.
+3DX_Ruland_Part Number: MCLX-8-6-F
+3DX_Ruland_Description: Rigid Coupling, One-Piece, Bores 8mmx6mm, OD 24mm, L 35mm, 1215 Lead-Free Steel, COO USA
+3DX_Ruland_Product Page: <a target="_blank" href="https://www.ruland.com/MCLX-8-6-F.html">MCLX-8-6-F Product Page</a>
